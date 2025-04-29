@@ -8,6 +8,45 @@ const OrderHistory = ({ orders = [] }) => {
   const [orderDetails, setOrderDetails] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [processedOrders, setProcessedOrders] = useState([]);
+
+  // Функция для обработки и проверки данных заказов
+  const processOrders = (orders) => {
+    if (!orders || !Array.isArray(orders)) {
+      console.warn('Получены некорректные данные заказов:', orders);
+      return [];
+    }
+    
+    return orders.map(order => {
+      // Проверка наличия обязательных полей
+      if (!order.id) {
+        console.warn('Заказ без ID:', order);
+        return null;
+      }
+      
+      // Проверка и форматирование дат
+      const created_at = order.created_at ? new Date(order.created_at) : new Date();
+      const updated_at = order.updated_at ? new Date(order.updated_at) : created_at;
+      
+      // Проверка статуса
+      const status = order.status || 'pending';
+      
+      return {
+        ...order,
+        created_at: created_at.toISOString(),
+        updated_at: updated_at.toISOString(),
+        status
+      };
+    }).filter(Boolean); // Удаляем null значения
+  };
+
+  // Обработка заказов при изменении входных данных
+  useEffect(() => {
+    // Обрабатываем полученные заказы для проверки и форматирования
+    const cleanedOrders = processOrders(orders);
+    setProcessedOrders(cleanedOrders);
+    console.log('Обработанные заказы:', cleanedOrders);
+  }, [orders]);
 
   // Обработчик для переключения активного заказа
   const toggleOrderDetails = async (orderId) => {
@@ -56,10 +95,12 @@ const OrderHistory = ({ orders = [] }) => {
       await orderService.cancelOrder(orderId);
       
       // Обновляем статус заказа локально
-      const updatedOrders = orders.map(order => 
-        order.id === orderId 
-          ? { ...order, status: 'cancelled' } 
-          : order
+      setProcessedOrders(prevOrders => 
+        prevOrders.map(order => 
+          order.id === orderId 
+            ? { ...order, status: 'cancelled' } 
+            : order
+        )
       );
       
       // Обновляем состояние
@@ -100,16 +141,21 @@ const OrderHistory = ({ orders = [] }) => {
 
   // Форматирование даты
   const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('ru-RU', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    });
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('ru-RU', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      });
+    } catch (e) {
+      console.warn('Ошибка форматирования даты:', e);
+      return 'Некорректная дата';
+    }
   };
 
   // Отображаем сообщение, если у пользователя еще нет заказов
-  if (!orders || orders.length === 0) {
+  if (!processedOrders || processedOrders.length === 0) {
     return (
       <div className="order-history-empty">
         <h2>У вас пока нет заказов</h2>
@@ -126,7 +172,7 @@ const OrderHistory = ({ orders = [] }) => {
       {error && <div className="order-error">{error}</div>}
       
       <div className="order-list">
-        {orders.map((order) => (
+        {processedOrders.map((order) => (
           <div key={order.id} className="order-item">
             <div 
               className="order-header" 

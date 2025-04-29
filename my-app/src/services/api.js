@@ -11,27 +11,51 @@ const handleResponse = async (response) => {
   if (!response.ok) {
     // Если статус ответа не 2xx, пытаемся получить текст ошибки из ответа
     const errorText = await response.text();
-    let errorMessage = response.statusText;
+    let errorMessage;
     
     try {
+      // Пытаемся разобрать ошибку как JSON
       const errorJson = JSON.parse(errorText);
-      errorMessage = errorJson.detail || JSON.stringify(errorJson);
+      
+      // Проверяем различные форматы ошибок FastAPI
+      if (errorJson.detail) {
+        errorMessage = typeof errorJson.detail === 'string' 
+          ? errorJson.detail 
+          : JSON.stringify(errorJson.detail);
+      } else if (errorJson.message) {
+        errorMessage = errorJson.message;
+      } else {
+        errorMessage = JSON.stringify(errorJson);
+      }
     } catch (e) {
       // Если не удалось распарсить JSON, используем текст как есть
-      errorMessage = errorText || response.statusText;
+      errorMessage = errorText || `Ошибка сервера: ${response.status}`;
     }
     
+    console.error(`API error (${response.status}):`, errorMessage);
     throw new Error(errorMessage);
   }
-  return response.json();
+  
+  // Для пустых ответов (например, при статусе 204 No Content)
+  if (response.status === 204) {
+    return {};
+  }
+  
+  try {
+    return await response.json();
+  } catch (e) {
+    console.warn('Ответ не содержит JSON:', e);
+    return {};
+  }
 };
 
 // Функция для выполнения запросов с авторизацией
 const fetchWithAuth = async (url, options = {}) => {
   const token = localStorage.getItem('token');
   
-  // Добавляем заголовок авторизации, если есть токен
+  // Объединяем заголовки
   const headers = {
+    'Content-Type': 'application/json',
     ...options.headers,
     ...(token ? { 'Authorization': `Bearer ${token}` } : {})
   };
@@ -41,6 +65,19 @@ const fetchWithAuth = async (url, options = {}) => {
       ...options,
       headers
     });
+    
+    // Если получаем 401 Unauthorized, очищаем токен и перенаправляем на страницу входа
+    if (response.status === 401) {
+      console.warn('Токен авторизации недействителен или истек');
+      localStorage.removeItem('token');
+      
+      // Если мы находимся в браузере, можно перенаправить на страницу входа
+      if (typeof window !== 'undefined') {
+        // Перенаправление можно реализовать при необходимости
+        // window.location.href = '/auth';
+      }
+    }
+    
     return response;
   } catch (error) {
     console.error(`Ошибка при запросе к ${url}:`, error);
@@ -283,51 +320,91 @@ const orderService = {
     try {
       console.log("Создание заказа с данными:", orderData);
       
+      // Получаем user_id из текущего пользователя
+      const userResponse = await fetchWithAuth(`${API_URL}/users/me`);
+      const userData = await handleResponse(userResponse);
+      const userId = userData.id;
+      
+      if (!userId) {
+        throw new Error("Не удалось получить ID пользователя");
+      }
+      
+      // Добавляем user_id к данным заказа
       const response = await fetchWithAuth(`${API_URL}/orders`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(orderData),
+        body: JSON.stringify({
+          ...orderData,
+          user_id: userId  // Добавляем ID пользователя к заказу
+        }),
       });
       
-      return handleResponse(response);
+      // Улучшенная обработка ошибок
+      if (!response.ok) {
+        const errorText = await response.text();
+        let errorMessage;
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.detail || JSON.stringify(errorData);
+        } catch (e) {
+          errorMessage = errorText || `Ошибка сервера: ${response.status}`;
+        }
+        throw new Error(errorMessage);
+      }
+      
+      return await response.json();
     } catch (error) {
       console.error('Ошибка при создании заказа:', error);
       throw error;
     }
   },
-/**
+  
+  /**
    * Получение списка заказов пользователя
    * @returns {Promise<Array>} - список заказов
    */
-getUserOrders: async () => {
-  try {
-    const response = await fetchWithAuth(`${API_URL}/orders`);
-    return handleResponse(response);
-  } catch (error) {
-    console.error('Ошибка при получении заказов пользователя:', error);
-    // Возвращаем пустой массив вместо ошибки для лучшего UX
-    return [];
-  }
-},
-
-/**
- * Получение информации о конкретном заказе
- * @param {number} orderId - ID заказа
- * @returns {Promise<Object>} - данные заказа
- */
-getOrderById: async (orderId) => {
-  try {
-    const response = await fetchWithAuth(`${API_URL}/orders/${orderId}`);
-    return handleResponse(response);
-  } catch (error) {
-    console.error('Ошибка при получении данных заказа:', error);
-    throw error;
-  }
-},
-
-  /**
+  getUserOrders: async () => {
+    try {
+      const response = await fetchWithAuth(`${API_URL}/orders/`);
+      
+      // Проверка статуса ответа
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Ошибка при получении заказов:', errorText);
+        return [];
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Ошибка при получении заказов пользователя:', error);
+      // Возвращаем пустой массив вместо ошибки для лучшего UX
+      return [];
+    }
+  },
+    /**
+   * Получение информации о конкретном заказе
+   * @param {number} orderId - ID заказа
+   * @returns {Promise<Object>} - данные заказа
+   */
+    getOrderById: async (orderId) => {
+      try {
+        const response = await fetchWithAuth(`${API_URL}/orders/${orderId}`);
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`Ошибка при получении заказа ${orderId}:`, errorText);
+          throw new Error('Не удалось получить данные заказа');
+        }
+        
+        return await response.json();
+      } catch (error) {
+        console.error('Ошибка при получении данных заказа:', error);
+        throw error;
+      }
+    },
+     /**
    * Получение детальной информации о заказе, включая товары
    * @param {number} orderId - ID заказа
    * @returns {Promise<Object>} - детальные данные заказа
@@ -335,28 +412,21 @@ getOrderById: async (orderId) => {
   getOrderDetails: async (orderId) => {
     try {
       const response = await fetchWithAuth(`${API_URL}/orders/${orderId}/details`);
-      return handleResponse(response);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`Ошибка при получении деталей заказа ${orderId}:`, errorText);
+        throw new Error('Не удалось получить детали заказа');
+      }
+      
+      const data = await response.json();
+      console.log(`Получены детали заказа ${orderId}:`, data);
+      return data;
     } catch (error) {
       console.error('Ошибка при получении деталей заказа:', error);
       throw error;
     }
   },
-
-  /**
-   * Получение детальной информации о заказе, включая товары
-   * @param {number} orderId - ID заказа
-   * @returns {Promise<Object>} - детальные данные заказа
-   */
-  getOrderDetails: async (orderId) => {
-    try {
-      const response = await fetchWithAuth(`${API_URL}/orders/${orderId}/details`);
-      return handleResponse(response);
-    } catch (error) {
-      console.error('Ошибка при получении деталей заказа:', error);
-      throw error;
-    }
-  },
-
   /**
    * Обновление статуса заказа
    * @param {number} orderId - ID заказа
@@ -372,27 +442,33 @@ getOrderById: async (orderId) => {
         },
         body: JSON.stringify({ status }),
       });
-      return handleResponse(response);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`Ошибка при обновлении статуса заказа ${orderId}:`, errorText);
+        throw new Error('Не удалось обновить статус заказа');
+      }
+      
+      return await response.json();
     } catch (error) {
       console.error('Ошибка при обновлении статуса заказа:', error);
       throw error;
     }
   },
-
-  /**
+    /**
    * Отмена заказа
    * @param {number} orderId - ID заказа
    * @returns {Promise<Object>} - результат операции
    */
-  cancelOrder: async (orderId) => {
-    try {
-      // Используем метод обновления статуса для отмены
-      return await orderService.updateOrderStatus(orderId, 'cancelled');
-    } catch (error) {
-      console.error('Ошибка при отмене заказа:', error);
-      throw error;
+    cancelOrder: async (orderId) => {
+      try {
+        // Используем метод обновления статуса для отмены
+        return await orderService.updateOrderStatus(orderId, 'cancelled');
+      } catch (error) {
+        console.error('Ошибка при отмене заказа:', error);
+        throw error;
+      }
     }
-  }
 };
 
 export { productService, userService, orderService };

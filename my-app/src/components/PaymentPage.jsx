@@ -76,6 +76,8 @@ export default function PaymentPage() {
           ]
         };
         
+        console.log("Отправка заказа с данными:", orderData);
+        
         // Отправляем заказ на сервер
         const response = await orderService.createOrder(orderData);
         console.log("Заказ успешно создан:", response);
@@ -86,12 +88,11 @@ export default function PaymentPage() {
         // Устанавливаем состояние успешной оплаты
         setPaymentSuccess(true);
         setShowQRCode(false);
-      } catch (err) {
-        console.error("Ошибка при создании заказа:", err);
-        setError("Произошла ошибка при создании заказа. Но не волнуйтесь, мы свяжемся с вами для подтверждения.");
+      } catch (error) {
+        console.error("Ошибка при создании заказа:", error);
+        setError("Произошла ошибка при создании заказа: " + (error.message || "Неизвестная ошибка"));
         
-        // Показываем пользователю, что оплата прошла успешно, даже если создание заказа не удалось
-        // Это поможет избежать негативного опыта, когда пользователь уже оплатил, но возникла техническая ошибка
+        // Можно оставить возможность продолжить, даже при ошибке создания заказа
         setPaymentSuccess(true);
         setShowQRCode(false);
         setOrderNumber("Обрабатывается");
