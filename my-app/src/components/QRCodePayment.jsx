@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import './QRCodePayment.css';
+import '../styles/QRCodePayment.css';
 
 const QRCodePayment = ({ onSuccess, product }) => {
   const [timeLeft, setTimeLeft] = useState(20); // 20 секунд на оплату
@@ -121,36 +121,6 @@ const QRCodePayment = ({ onSuccess, product }) => {
             <button onClick={handleCancel} className="cancel-payment-button">
               Отменить
             </button>
-          </div>
-          
-          <div className="payment-banks">
-            <p>Поддерживаемые банки:</p>
-            <div className="bank-icons">
-              <div className="bank-icon">
-                <svg width="24" height="24" viewBox="0 0 24 24">
-                  <rect width="24" height="24" fill="#016fd0" rx="4" />
-                  <path fill="#fff" d="M12 5a7 7 0 1 0 0 14 7 7 0 0 0 0-14z" />
-                </svg>
-              </div>
-              <div className="bank-icon">
-                <svg width="24" height="24" viewBox="0 0 24 24">
-                  <rect width="24" height="24" fill="#eb001b" rx="4" />
-                  <circle cx="12" cy="12" r="7" fill="#fff" />
-                </svg>
-              </div>
-              <div className="bank-icon">
-                <svg width="24" height="24" viewBox="0 0 24 24">
-                  <rect width="24" height="24" fill="#00457c" rx="4" />
-                  <path fill="#fff" d="M7 10h10v4H7z" />
-                </svg>
-              </div>
-              <div className="bank-icon">
-                <svg width="24" height="24" viewBox="0 0 24 24">
-                  <rect width="24" height="24" fill="#4caf50" rx="4" />
-                  <path fill="#fff" d="M8 8h8v8H8z" />
-                </svg>
-              </div>
-            </div>
           </div>
         </>
       )}

@@ -1,242 +1,272 @@
 /* Основной контейнер QR-кода */
 .qr-payment-container {
-    background-color: #fff;
-    border-radius: 12px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-    padding: 30px;
-    max-width: 600px;
-    margin: 0 auto;
-    text-align: center;
-  }
-  
-  .qr-payment-container h2 {
-    font-size: 24px;
-    font-weight: 700;
-    margin-bottom: 30px;
-    color: #333;
-  }
-  
-  /* Обертка QR-кода */
-  .qr-code-wrapper {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    margin-bottom: 25px;
+  background-color: #fff;
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+  padding: 30px;
+  max-width: 600px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.qr-payment-container h2 {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 30px;
+  color: #333;
+}
+
+/* Обертка QR-кода */
+.qr-code-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 25px;
+}
+
+.qr-code {
+  width: 200px;
+  height: 200px;
+  border: 1px solid #eee;
+  border-radius: 10px;
+  padding: 10px;
+  background-color: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.qr-instructions {
+  margin-top: 20px;
+  text-align: center;
+}
+
+.qr-instructions p {
+  color: #666;
+  font-size: 15px;
+  margin-bottom: 15px;
+}
+
+/* Таймер */
+.timer-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.timer-icon {
+  font-size: 20px;
+}
+
+.timer {
+  font-size: 22px;
+  font-weight: 600;
+  color: #333;
+  min-width: 70px;
+  padding: 8px 12px;
+  background-color: #f5f5f5;
+  border-radius: 20px;
+}
+
+/* Детали платежа */
+.payment-details {
+  margin: 25px 0;
+  padding: 20px;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+}
+
+.payment-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  font-size: 15px;
+}
+
+.payment-row:last-child {
+  margin-bottom: 0;
+}
+
+.payment-row .label {
+  color: #757575;
+}
+
+.payment-row .value {
+  font-weight: 600;
+  color: #333;
+}
+
+/* Кнопки действий */
+.payment-actions {
+  display: flex;
+  gap: 15px;
+  margin-top: 25px;
+  justify-content: center;
+}
+
+.check-payment-button, .cancel-payment-button {
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: none;
+}
+
+.check-payment-button {
+  background-color: #000;
+  color: #fff;
+}
+
+.check-payment-button:hover {
+  background-color: #333;
+}
+
+.cancel-payment-button {
+  background-color: transparent;
+  color: #666;
+  border: 1px solid #ddd;
+}
+
+.cancel-payment-button:hover {
+  background-color: #f5f5f5;
+}
+
+/* Банки */
+.payment-banks {
+  margin-top: 30px;
+  padding-top: 20px;
+  border-top: 1px solid #eee;
+  text-align: center;
+}
+
+.payment-banks p {
+  font-size: 14px;
+  color: #757575;
+  margin-bottom: 15px;
+}
+
+.bank-icons {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+}
+
+.bank-icon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Истекшее время */
+.payment-expired {
+  text-align: center;
+  padding: 20px;
+}
+
+.expired-icon {
+  font-size: 36px;
+  margin-bottom: 15px;
+}
+
+.payment-expired h3 {
+  font-size: 20px;
+  font-weight: 600;
+  color: #d32f2f;
+  margin-bottom: 15px;
+}
+
+.payment-expired p {
+  color: #666;
+  margin-bottom: 25px;
+}
+
+.expired-actions {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+/* Обработка платежа */
+.payment-processing {
+  text-align: center;
+  padding: 30px;
+}
+
+.payment-spinner {
+  width: 50px;
+  height: 50px;
+  border: 5px solid #f3f3f3;
+  border-top: 5px solid #000;
+  border-radius: 50%;
+  margin: 0 auto 20px;
+  animation: spin 1s linear infinite;
+}
+
+.payment-processing p {
+  font-size: 18px;
+  color: #333;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Адаптивная верстка */
+@media (max-width: 768px) {
+  .qr-payment-container {
+    padding: 20px;
   }
   
   .qr-code {
-    width: 200px;
-    height: 200px;
-    border: 1px solid #eee;
-    border-radius: 10px;
-    padding: 10px;
-    background-color: #fff;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    width: 180px;
+    height: 180px;
   }
   
-  .qr-instructions {
-    margin-top: 20px;
-    text-align: center;
-  }
-  
-  .qr-instructions p {
-    color: #666;
-    font-size: 15px;
-    margin-bottom: 15px;
-  }
-  
-  /* Таймер */
-  .timer-container {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    margin-top: 15px;
-  }
-  
-  .timer-icon {
-    font-size: 20px;
-  }
-  
-  .timer {
-    font-size: 22px;
-    font-weight: 600;
-    color: #333;
-    min-width: 70px;
-    padding: 8px 12px;
-    background-color: #f5f5f5;
-    border-radius: 20px;
-  }
-  
-  /* Детали платежа */
-  .payment-details {
-    margin: 25px 0;
-    padding: 20px;
-    background-color: #f9f9f9;
-    border-radius: 8px;
-  }
-  
-  .payment-row {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 10px;
-    font-size: 15px;
-  }
-  
-  .payment-row:last-child {
-    margin-bottom: 0;
-  }
-  
-  .payment-row .label {
-    color: #757575;
-  }
-  
-  .payment-row .value {
-    font-weight: 600;
-    color: #333;
-  }
-  
-  /* Кнопки действий */
   .payment-actions {
-    display: flex;
-    gap: 15px;
-    margin-top: 25px;
-    justify-content: center;
+    flex-direction: column;
   }
   
   .check-payment-button, .cancel-payment-button {
-    padding: 12px 24px;
-    border-radius: 8px;
-    font-size: 15px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    border: none;
-  }
-  
-  .check-payment-button {
-    background-color: #000;
-    color: #fff;
-  }
-  
-  .check-payment-button:hover {
-    background-color: #333;
-  }
-  
-  .cancel-payment-button {
-    background-color: transparent;
-    color: #666;
-    border: 1px solid #ddd;
-  }
-  
-  .cancel-payment-button:hover {
-    background-color: #f5f5f5;
-  }
-  
-  /* Банки */
-  .payment-banks {
-    margin-top: 30px;
-    padding-top: 20px;
-    border-top: 1px solid #eee;
-    text-align: center;
-  }
-  
-  .payment-banks p {
-    font-size: 14px;
-    color: #757575;
-    margin-bottom: 15px;
-  }
-  
-  .bank-icons {
-    display: flex;
-    gap: 15px;
-    justify-content: center;
-  }
-  
-  .bank-icon {
-    width: 40px;
-    height: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  
-  /* Истекшее время */
-  .payment-expired {
-    text-align: center;
-    padding: 20px;
-  }
-  
-  .expired-icon {
-    font-size: 36px;
-    margin-bottom: 15px;
-  }
-  
-  .payment-expired h3 {
-    font-size: 20px;
-    font-weight: 600;
-    color: #d32f2f;
-    margin-bottom: 15px;
-  }
-  
-  .payment-expired p {
-    color: #666;
-    margin-bottom: 25px;
+    width: 100%;
   }
   
   .expired-actions {
-    display: flex;
-    gap: 15px;
-    justify-content: center;
-    margin-top: 20px;
+    flex-direction: column;
   }
-  
-  /* Обработка платежа */
-  .payment-processing {
-    text-align: center;
-    padding: 30px;
-  }
-  
-  .payment-spinner {
-    width: 50px;
-    height: 50px;
-    border: 5px solid #f3f3f3;
-    border-top: 5px solid #000;
-    border-radius: 50%;
-    margin: 0 auto 20px;
-    animation: spin 1s linear infinite;
-  }
-  
-  .payment-processing p {
-    font-size: 18px;
-    color: #333;
-  }
-  
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-  }
-  
-  /* Адаптивная верстка */
-  @media (max-width: 768px) {
-    .qr-payment-container {
-      padding: 20px;
-    }
-    
-    .qr-code {
-      width: 180px;
-      height: 180px;
-    }
-    
-    .payment-actions {
-      flex-direction: column;
-    }
-    
-    .check-payment-button, .cancel-payment-button {
-      width: 100%;
-    }
-    
-    .expired-actions {
-      flex-direction: column;
-    }
-  }
+}
+
+/* Модальное окно */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-close {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  font-size: 24px;
+  background: none;
+  border: none;
+  color: #666;
+  cursor: pointer;
+  z-index: 1010;
+}
+
+.modal-close:hover {
+  color: #333;
+}
