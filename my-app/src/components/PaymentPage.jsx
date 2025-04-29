@@ -6,7 +6,7 @@ import useUserStore from "../store/index";
 import "../App.css";
 import "../styles/QRCodePayment.css";
 
-export default function PaymentPage() {
+export default function PaymentPage({ refreshAuth }) {
   const location = useLocation();
   const { product, selectedSize } = location.state || {};
   const user = useUserStore((state) => state.user);
@@ -57,6 +57,14 @@ export default function PaymentPage() {
       setError("");
       
       try {
+        // Перед созданием заказа обновляем данные аутентификации
+        if (refreshAuth) {
+          const isAuthenticated = await refreshAuth();
+          if (!isAuthenticated) {
+            throw new Error("Необходимо войти в систему для создания заказа");
+          }
+        }
+        
         // Формируем данные заказа в соответствии с ожиданиями бэкенда
         const orderData = {
           shipping_address: `${city}, ${address}`,
@@ -78,6 +86,12 @@ export default function PaymentPage() {
         
         console.log("Отправка заказа с данными:", orderData);
         
+        // Проверка валидности токена перед отправкой заказа
+        const token = localStorage.getItem("token");
+        if (!token) {
+          throw new Error("Отсутствует токен авторизации. Пожалуйста, войдите снова.");
+        }
+        
         // Отправляем заказ на сервер
         const response = await orderService.createOrder(orderData);
         console.log("Заказ успешно создан:", response);
@@ -91,6 +105,31 @@ export default function PaymentPage() {
       } catch (error) {
         console.error("Ошибка при создании заказа:", error);
         setError("Произошла ошибка при создании заказа: " + (error.message || "Неизвестная ошибка"));
+        
+        // В случае ошибки аутентификации, предлагаем пользователю войти снова
+        if (error.message && (error.message.includes("аутентифицирован") || 
+            error.message.includes("Unauthorized") ||
+            error.message.includes("токен") ||
+            error.message.includes("войти"))) {
+          // Сохраняем данные для возврата после авторизации
+          const paymentData = {
+            product,
+            selectedSize,
+            shippingInfo: {
+              firstName,
+              lastName,
+              email,
+              phoneNumber,
+              address,
+              city
+            }
+          };
+          
+          // Перенаправляем на страницу аутентификации
+          localStorage.removeItem("token"); // Удаляем недействительный токен
+          navigate("/auth", { state: { returnUrl: "/payment", paymentData } });
+          return;
+        }
         
         // Можно оставить возможность продолжить, даже при ошибке создания заказа
         setPaymentSuccess(true);

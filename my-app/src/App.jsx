@@ -11,6 +11,10 @@ import useUserStore from "./store/index";
 import { userService } from "./services/api";
 import "./App.css";
 
+// Вынесем функцию refreshUserAuth за пределы компонента
+// чтобы можно было экспортировать её корректно
+let refreshUserAuthGlobal = null;
+
 function App() {
   const [showModal, setShowModal] = useState(false);
   const [isLogin, setIsLogin] = useState(true);
@@ -20,6 +24,42 @@ function App() {
   // Используем отдельные селекторы для user и setUser
   const user = useUserStore(state => state.user);
   const setUser = useUserStore(state => state.setUser);
+
+  // Функция для обновления аутентификации
+  const refreshUserAuth = async () => {
+    const token = localStorage.getItem("token");
+    
+    if (!token) {
+      // Если токена нет, пользователь не авторизован
+      setUser(null);
+      return false;
+    }
+    
+    try {
+      // Проверяем валидность токена
+      const userData = await userService.getCurrentUser();
+      setUser(userData);
+      return true;
+    } catch (error) {
+      console.error("Ошибка при обновлении данных пользователя:", error);
+      
+      // Если токен недействителен, очищаем его
+      if (error.message && (
+          error.message.includes("401") || 
+          error.message.includes("Unauthorized") || 
+          error.message.includes("токен")
+      )) {
+        localStorage.removeItem("token");
+        setUser(null);
+        setAuthError("Время сессии истекло или токен недействителен. Пожалуйста, войдите снова.");
+      }
+      
+      return false;
+    }
+  };
+
+  // Сохраняем функцию в глобальную переменную для экспорта
+  refreshUserAuthGlobal = refreshUserAuth;
 
   // Проверка авторизации при загрузке приложения
   useEffect(() => {
@@ -65,6 +105,7 @@ function App() {
     setUser(null);
   };
 
+  
   // Компонент для защищенных маршрутов
   const PrivateRoute = ({ children }) => {
     if (loading) {
@@ -106,7 +147,7 @@ function App() {
           path="/payment" 
           element={
             <PrivateRoute>
-              <PaymentPage />
+              <PaymentPage refreshAuth={refreshUserAuth} />
             </PrivateRoute>
           } 
         />
@@ -132,5 +173,15 @@ function App() {
     </Router>
   );
 }
+
+// Экспортируем функцию для использования в других компонентах
+export const refreshUserAuth = async (...args) => {
+  if (refreshUserAuthGlobal) {
+    return refreshUserAuthGlobal(...args);
+  }
+  // Если функция еще не инициализирована
+  console.warn('refreshUserAuth вызвана до инициализации App');
+  return false;
+};
 
 export default App;

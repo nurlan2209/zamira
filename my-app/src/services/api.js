@@ -320,28 +320,49 @@ const orderService = {
     try {
       console.log("Создание заказа с данными:", orderData);
       
-      // Получаем user_id из текущего пользователя
-      const userResponse = await fetchWithAuth(`${API_URL}/users/me`);
-      const userData = await handleResponse(userResponse);
+      // Получаем текущий токен
+      const token = localStorage.getItem("token");
+      if (!token) {
+        throw new Error("Не авторизован. Пожалуйста, войдите снова.");
+      }
+      
+      // Сначала получаем данные пользователя
+      const userResponse = await fetch(`${API_URL}/users/me`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!userResponse.ok) {
+        if (userResponse.status === 401) {
+          // Если токен недействителен, удаляем его и выбрасываем ошибку
+          localStorage.removeItem("token");
+          throw new Error("Токен авторизации истек или недействителен. Пожалуйста, войдите снова.");
+        }
+        throw new Error("Ошибка при получении данных пользователя");
+      }
+      
+      const userData = await userResponse.json();
       const userId = userData.id;
       
       if (!userId) {
         throw new Error("Не удалось получить ID пользователя");
       }
       
-      // Добавляем user_id к данным заказа
-      const response = await fetchWithAuth(`${API_URL}/orders`, {
+      // Затем создаем заказ
+      const response = await fetch(`${API_URL}/orders`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           ...orderData,
-          user_id: userId  // Добавляем ID пользователя к заказу
+          user_id: userId
         }),
       });
       
-      // Улучшенная обработка ошибок
+      // Обработка ошибок
       if (!response.ok) {
         const errorText = await response.text();
         let errorMessage;
