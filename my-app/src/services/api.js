@@ -3,8 +3,8 @@
  */
 
 const API_URL = 'http://localhost:8000/api';
-// По умолчанию всегда используем реальное API, но можем переключиться на мок-данные, если сервер недоступен
-const USE_MOCK_DATA = false; 
+// Отключаем использование мок-данных
+const USE_MOCK_DATA = false;
 
 // Вспомогательные функции для работы с API
 const handleResponse = async (response) => {
@@ -26,94 +26,26 @@ const handleResponse = async (response) => {
   return response.json();
 };
 
-// Вспомогательная функция для отладки запросов к API
-const debugFetch = async (url, options = {}) => {
-  console.log(`Отправка запроса к: ${url}`);
-  console.log('Заголовки:', options.headers || {});
-  if (options.body) {
-    console.log('Тело запроса:', options.body);
-  }
+// Функция для выполнения запросов с авторизацией
+const fetchWithAuth = async (url, options = {}) => {
+  const token = localStorage.getItem('token');
+  
+  // Добавляем заголовок авторизации, если есть токен
+  const headers = {
+    ...options.headers,
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+  };
   
   try {
-    const response = await fetch(url, options);
-    console.log(`Получен ответ от ${url}:`, response.status, response.statusText);
+    const response = await fetch(url, {
+      ...options,
+      headers
+    });
     return response;
   } catch (error) {
     console.error(`Ошибка при запросе к ${url}:`, error);
     throw error;
   }
-};
-
-// Хранилище для мок-данных о продуктах (на случай недоступности API)
-const mockProducts = [
-  {
-    id: 1,
-    name: "Shadow Ember",
-    price: "$190",
-    actual_price: 190.0,
-    img: "https://i.pinimg.com/736x/9d/4f/94/9d4f94d406f3bb64676b9cdea594839d.jpg",
-    category: "Hoodies",
-    sizes: ["S", "M", "L", "XL"],
-    rating: 4.5,
-    reviews: [
-      {"user": "Айгуль", "review": "Очень красивый худи, комфортный и стильный!"},
-      {"user": "Руслан", "review": "Ткань приятная, но немного маломерит."}
-    ],
-    description: "Стильный худи Shadow Ember из премиальной ткани. Идеально подойдет для создания модного повседневного образа."
-  },
-  {
-    id: 2,
-    name: "Frost Pulse",
-    price: "$49",
-    actual_price: 49.0,
-    img: "https://i.pinimg.com/736x/66/bc/11/66bc1140083fd5a840e66c4634e02270.jpg",
-    category: "Hoodies",
-    sizes: ["S", "M", "L"],
-    rating: 4.0,
-    reviews: [
-      {"user": "Мадина", "review": "Очень приятная ткань, но в районе талии немного широковато."},
-      {"user": "Данияр", "review": "Хороший худи, но материал мог бы быть плотнее."}
-    ],
-    description: "Легкий худи Frost Pulse идеально подойдет для прохладных летних вечеров."
-  },
-  {
-    id: 10,
-    name: "Carbon Veil",
-    price: "$190",
-    actual_price: 190.0,
-    img: "https://i.pinimg.com/736x/79/29/0f/79290fe785787fbc80dfc172cec8a747.jpg",
-    category: "Bottom",
-    sizes: ["S", "M", "L", "XL"],
-    rating: 4.5,
-    reviews: [
-      {"user": "Айгуль", "review": "Удобные штаны, хороший материал!"},
-      {"user": "Руслан", "review": "Хорошо сидят на фигуре."}
-    ],
-    description: "Штаны в стиле карго с удобными боковыми карманами, выполненные из прочной ткани."
-  }
-];
-
-// Получение данных о товаре по ID из мок-данных
-const getMockProductById = (id) => {
-  id = parseInt(id);
-  return mockProducts.find(product => product.id === id) || null;
-};
-
-// Поиск товаров по названию в мок-данных
-const searchMockProducts = (query) => {
-  query = query.toLowerCase();
-  return mockProducts.filter(product => 
-    product.name.toLowerCase().includes(query) || 
-    product.category.toLowerCase().includes(query)
-  );
-};
-
-// Фильтрация товаров по категории в мок-данных
-const getMockProducts = (category) => {
-  if (!category) {
-    return mockProducts;
-  }
-  return mockProducts.filter(product => product.category === category);
 };
 
 // Сервис для работы с продуктами
@@ -129,16 +61,10 @@ const productService = {
         ? `${API_URL}/products?category=${encodeURIComponent(category)}` 
         : `${API_URL}/products`;
       
-      const response = await fetch(url);
+      const response = await fetchWithAuth(url);
       return handleResponse(response);
     } catch (error) {
-      console.warn('Ошибка при получении данных с сервера, используем локальные данные:', error);
-      
-      // Если не удалось получить данные с сервера, используем мок-данные
-      if (USE_MOCK_DATA) {
-        return getMockProducts(category);
-      }
-      
+      console.error('Ошибка при получении товаров:', error);
       throw error;
     }
   },
@@ -150,16 +76,10 @@ const productService = {
    */
   getProductById: async (id) => {
     try {
-      const response = await fetch(`${API_URL}/products/${id}`);
+      const response = await fetchWithAuth(`${API_URL}/products/${id}`);
       return handleResponse(response);
     } catch (error) {
-      console.warn('Ошибка при получении данных с сервера:', error);
-      
-      // Если не удалось получить данные с сервера, используем мок-данные
-      if (USE_MOCK_DATA) {
-        return getMockProductById(id);
-      }
-      
+      console.error('Ошибка при получении товара по ID:', error);
       throw error;
     }
   },
@@ -171,16 +91,10 @@ const productService = {
    */
   searchProducts: async (query) => {
     try {
-      const response = await fetch(`${API_URL}/products/search?query=${encodeURIComponent(query)}`);
+      const response = await fetchWithAuth(`${API_URL}/products/search?query=${encodeURIComponent(query)}`);
       return handleResponse(response);
     } catch (error) {
-      console.warn('Ошибка при получении данных с сервера:', error);
-      
-      // Если не удалось получить данные с сервера, используем мок-данные
-      if (USE_MOCK_DATA) {
-        return searchMockProducts(query);
-      }
-      
+      console.error('Ошибка при поиске товаров:', error);
       throw error;
     }
   },
@@ -193,30 +107,17 @@ const productService = {
    * @returns {Promise<Object>} - обновленные данные о товаре
    */
   addReview: async (productId, user, review) => {
-    const token = localStorage.getItem('token');
-    
     try {
-      const response = await debugFetch(`${API_URL}/products/${productId}/reviews`, {
+      const response = await fetchWithAuth(`${API_URL}/products/${productId}/reviews`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({ user, review }),
       });
       return handleResponse(response);
     } catch (error) {
-      console.warn('Ошибка при добавлении отзыва:', error);
-      
-      // Если включен режим мок-данных и произошла ошибка
-      if (USE_MOCK_DATA) {
-        const product = getMockProductById(productId);
-        if (product) {
-          product.reviews.push({ user, review });
-          return product;
-        }
-      }
-      
+      console.error('Ошибка при добавлении отзыва:', error);
       throw error;
     }
   }
@@ -231,7 +132,7 @@ const userService = {
    */
   register: async (userData) => {
     try {
-      const response = await debugFetch(`${API_URL}/users`, {
+      const response = await fetch(`${API_URL}/users`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -241,18 +142,6 @@ const userService = {
       return handleResponse(response);
     } catch (error) {
       console.error('Ошибка при регистрации:', error);
-      
-      // Всегда возвращаем мок-данные при включенном режиме
-      if (USE_MOCK_DATA) {
-        console.log('Using mock data for registration');
-        return {
-          id: 999,
-          username: userData.username,
-          email: userData.email,
-          is_active: true
-        };
-      }
-      
       throw error;
     }
   },
@@ -264,22 +153,13 @@ const userService = {
    * @returns {Promise<Object>} - данные аутентификации с токеном
    */
   login: async (username, password) => {
-    // Если режим мок-данных включен, сразу возвращаем мок-токен
-    if (USE_MOCK_DATA) {
-      console.log('Using mock data for login');
-      return {
-        access_token: "mock_token_for_demo_purposes",
-        token_type: "bearer"
-      };
-    }
-
     // Для FastAPI требуется отправка формы в формате x-www-form-urlencoded
     const formData = new URLSearchParams();
     formData.append('username', username);
     formData.append('password', password);
 
     try {
-      const response = await debugFetch(`${API_URL}/users/token`, {
+      const response = await fetch(`${API_URL}/users/token`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
@@ -303,31 +183,15 @@ const userService = {
       throw new Error('Пользователь не аутентифицирован');
     }
 
-    // Если режим мок-данных включен, сразу возвращаем мок-пользователя
-    if (USE_MOCK_DATA) {
-      console.log('Using mock data for current user');
-      return {
-        id: 1,
-        username: "user",
-        email: "user@example.com",
-        first_name: "Иван",
-        last_name: "Петров",
-        phone_number: "+7777777777",
-        address: "ул. Абая, 1",
-        city: "Астана",
-        is_active: true
-      };
-    }
-
     try {
-      const response = await debugFetch(`${API_URL}/users/me`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-      });
+      const response = await fetchWithAuth(`${API_URL}/users/me`);
       return handleResponse(response);
     } catch (error) {
       console.error('Ошибка при получении данных пользователя:', error);
+      // Если получаем ошибку 401 (Unauthorized), очищаем токен
+      if (error.message.includes('401')) {
+        localStorage.removeItem('token');
+      }
       throw error;
     }
   },
@@ -338,36 +202,11 @@ const userService = {
    * @returns {Promise<Object>} - данные пользователя
    */
   getUserById: async (userId) => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      throw new Error('Пользователь не аутентифицирован');
-    }
-    
     try {
-      const response = await debugFetch(`${API_URL}/users/${userId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-      });
+      const response = await fetchWithAuth(`${API_URL}/users/${userId}`);
       return handleResponse(response);
     } catch (error) {
       console.error('Ошибка при получении данных пользователя:', error);
-      
-      // Если включен режим мок-данных и произошла ошибка
-      if (USE_MOCK_DATA) {
-        return {
-          id: userId,
-          username: "user",
-          email: `user@example.com`,
-          first_name: "Иван",
-          last_name: "Петров",
-          phone_number: "+7777777777",
-          address: "ул. Абая, 1",
-          city: "Астана",
-          is_active: true
-        };
-      }
-      
       throw error;
     }
   },
@@ -379,32 +218,56 @@ const userService = {
    * @returns {Promise<Object>} - обновленные данные пользователя
    */
   updateUser: async (userId, userData) => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      throw new Error('Пользователь не аутентифицирован');
-    }
-
     try {
-      console.log('Отправка запроса на обновление пользователя:', userData);
+      // Удаляем пустые поля, чтобы они не перезаписывали существующие значения
+      const cleanedData = {};
+      for (const key in userData) {
+        if (userData[key] !== null && userData[key] !== undefined) {
+          cleanedData[key] = userData[key];
+        }
+      }
       
-      const response = await debugFetch(`${API_URL}/users/${userId}`, {
+      const response = await fetchWithAuth(`${API_URL}/users/${userId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify(userData),
+        body: JSON.stringify(cleanedData),
       });
       
-      const updatedUser = await handleResponse(response);
-      console.log('Получены обновленные данные пользователя:', updatedUser);
-      
-      return updatedUser;
+      return handleResponse(response);
     } catch (error) {
       console.error('Ошибка при обновлении данных пользователя:', error);
       throw error;
     }
   },
+  
+  /**
+   * Изменение пароля пользователя
+   * @param {number} userId - ID пользователя
+   * @param {string} currentPassword - текущий пароль
+   * @param {string} newPassword - новый пароль
+   * @returns {Promise<Object>} - результат операции
+   */
+  changePassword: async (userId, currentPassword, newPassword) => {
+    try {
+      const response = await fetchWithAuth(`${API_URL}/users/${userId}/change-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          current_password: currentPassword,
+          new_password: newPassword
+        }),
+      });
+      
+      return handleResponse(response);
+    } catch (error) {
+      console.error('Ошибка при изменении пароля:', error);
+      throw error;
+    }
+  }
 };
 
 // Сервис для работы с заказами
@@ -415,17 +278,11 @@ const orderService = {
    * @returns {Promise<Object>} - созданный заказ
    */
   createOrder: async (orderData) => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      throw new Error('Пользователь не аутентифицирован');
-    }
-
     try {
-      const response = await debugFetch(`${API_URL}/orders`, {
+      const response = await fetchWithAuth(`${API_URL}/orders`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify(orderData),
       });
@@ -441,21 +298,14 @@ const orderService = {
    * @returns {Promise<Array>} - список заказов
    */
   getUserOrders: async () => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      throw new Error('Пользователь не аутентифицирован');
-    }
-
     try {
-      const response = await debugFetch(`${API_URL}/orders`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
+      const response = await fetchWithAuth(`${API_URL}/orders`);
       return handleResponse(response);
     } catch (error) {
       console.error('Ошибка при получении заказов пользователя:', error);
-      throw error;
+      // Если ошибка, возвращаем пустой массив вместо исключения,
+      // чтобы избежать сбоя рендеринга компонента истории заказов
+      return [];
     }
   },
 
@@ -465,20 +315,26 @@ const orderService = {
    * @returns {Promise<Object>} - данные заказа
    */
   getOrderById: async (orderId) => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      throw new Error('Пользователь не аутентифицирован');
-    }
-
     try {
-      const response = await debugFetch(`${API_URL}/orders/${orderId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
+      const response = await fetchWithAuth(`${API_URL}/orders/${orderId}`);
       return handleResponse(response);
     } catch (error) {
       console.error('Ошибка при получении данных заказа:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Получение детальной информации о заказе, включая товары
+   * @param {number} orderId - ID заказа
+   * @returns {Promise<Object>} - детальные данные заказа
+   */
+  getOrderDetails: async (orderId) => {
+    try {
+      const response = await fetchWithAuth(`${API_URL}/orders/${orderId}/details`);
+      return handleResponse(response);
+    } catch (error) {
+      console.error('Ошибка при получении деталей заказа:', error);
       throw error;
     }
   },
@@ -490,17 +346,11 @@ const orderService = {
    * @returns {Promise<Object>} - обновленные данные заказа
    */
   updateOrderStatus: async (orderId, status) => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      throw new Error('Пользователь не аутентифицирован');
-    }
-
     try {
-      const response = await debugFetch(`${API_URL}/orders/${orderId}`, {
+      const response = await fetchWithAuth(`${API_URL}/orders/${orderId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({ status }),
       });
@@ -517,19 +367,9 @@ const orderService = {
    * @returns {Promise<Object>} - результат операции
    */
   cancelOrder: async (orderId) => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      throw new Error('Пользователь не аутентифицирован');
-    }
-
     try {
-      const response = await debugFetch(`${API_URL}/orders/${orderId}/cancel`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-      return handleResponse(response);
+      // Используем метод обновления статуса для отмены
+      return await orderService.updateOrderStatus(orderId, 'cancelled');
     } catch (error) {
       console.error('Ошибка при отмене заказа:', error);
       throw error;

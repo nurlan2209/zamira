@@ -6,6 +6,7 @@ function Modal({ show, closeModal, isLogin, toggleMode }) {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
@@ -19,6 +20,7 @@ function Modal({ show, closeModal, isLogin, toggleMode }) {
       setUsername("");
       setEmail("");
       setPassword("");
+      setConfirmPassword("");
       setErrorMessage("");
       setRegistrationSuccess(false);
     }
@@ -27,23 +29,58 @@ function Modal({ show, closeModal, isLogin, toggleMode }) {
   // Не рендерим, если модальное окно не открыто
   if (!show) return null;
 
-  const handleFormSubmit = async (e) => {
-    e.preventDefault();
+  // Валидация формы
+  const validateForm = () => {
+    // Сбрасываем предыдущую ошибку
     setErrorMessage("");
     
-    // Валидация формы
-    if (!username) {
+    // Проверка имени пользователя
+    if (!username.trim()) {
       setErrorMessage("Введите имя пользователя");
-      return;
+      return false;
     }
     
-    if (!isLogin && !email) {
-      setErrorMessage("Введите email");
-      return;
+    // Проверка email при регистрации
+    if (!isLogin) {
+      if (!email.trim()) {
+        setErrorMessage("Введите email");
+        return false;
+      }
+      
+      // Простая валидация формата email
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        setErrorMessage("Введите корректный email");
+        return false;
+      }
+      
+      // Проверка пароля
+      if (password.length < 8) {
+        setErrorMessage("Пароль должен содержать не менее 8 символов");
+        return false;
+      }
+      
+      // Проверка совпадения паролей
+      if (password !== confirmPassword) {
+        setErrorMessage("Пароли не совпадают");
+        return false;
+      }
+    } else {
+      // Проверка пароля при входе
+      if (!password) {
+        setErrorMessage("Введите пароль");
+        return false;
+      }
     }
     
-    if (!password) {
-      setErrorMessage("Введите пароль");
+    return true;
+  };
+
+  const handleFormSubmit = async (e) => {
+    e.preventDefault();
+    
+    // Валидируем форму
+    if (!validateForm()) {
       return;
     }
     
@@ -57,17 +94,24 @@ function Modal({ show, closeModal, isLogin, toggleMode }) {
         if (loginData && loginData.access_token) {
           localStorage.setItem("token", loginData.access_token);
           
-          // После успешного входа сразу создаем данные пользователя на основе формы
-          // вместо вызова API, который возвращает ошибку
-          const basicUserData = {
-            id: 1, // Заглушка, реальный ID будет получен с сервера
-            username: username,
-            email: email || "user@example.com", // Заглушка, если email не указан
-            is_active: true
-          };
-          
-          setUser(basicUserData);
-          closeModal();
+          // Получаем данные пользователя
+          try {
+            const userData = await userService.getCurrentUser();
+            setUser(userData);
+            closeModal();
+          } catch (userError) {
+            console.error("Ошибка при получении данных пользователя:", userError);
+            
+            // Если не удалось получить данные, создаем базовый объект пользователя
+            setUser({
+              id: 1,
+              username: username,
+              email: email || "",
+              is_active: true
+            });
+            
+            closeModal();
+          }
         } else {
           throw new Error("Не удалось получить токен авторизации");
         }
@@ -76,16 +120,18 @@ function Modal({ show, closeModal, isLogin, toggleMode }) {
         const registerData = {
           username,
           email,
-          password
+          password,
+          first_name: "",
+          last_name: ""
         };
         
         await userService.register(registerData);
-        // После успешной регистрации показываем сообщение и предлагаем войти
+        // После успешной регистрации показываем сообщение об успехе
         setRegistrationSuccess(true);
       }
     } catch (error) {
       console.error("Authentication error:", error);
-      setErrorMessage(error.message || "Ошибка при авторизации");
+      setErrorMessage(error.message || "Ошибка при авторизации. Попробуйте позже.");
     } finally {
       setIsLoading(false);
     }
@@ -100,16 +146,22 @@ function Modal({ show, closeModal, isLogin, toggleMode }) {
       if (loginData && loginData.access_token) {
         localStorage.setItem("token", loginData.access_token);
         
-        // После успешного входа сразу создаем данные пользователя на основе формы
-        const basicUserData = {
-          id: 1, // Заглушка, реальный ID будет получен с сервера
-          username: username,
-          email: email,
-          is_active: true
-        };
-        
-        setUser(basicUserData);
-        closeModal();
+        // Получаем данные пользователя после регистрации
+        try {
+          const userData = await userService.getCurrentUser();
+          setUser(userData);
+          closeModal();
+        } catch (userError) {
+          console.error("Ошибка при получении данных пользователя:", userError);
+          // В случае ошибки создаем базовый объект пользователя
+          setUser({
+            id: 1,
+            username: username,
+            email: email,
+            is_active: true
+          });
+          closeModal();
+        }
       } else {
         throw new Error("Не удалось получить токен авторизации");
       }
@@ -127,7 +179,7 @@ function Modal({ show, closeModal, isLogin, toggleMode }) {
   return (
     <div className="modal-overlay">
       <div className="modal-content">
-        <button className="close-button" onClick={closeModal}>
+        <button className="close-button" onClick={closeModal} aria-label="Закрыть">
           &times;
         </button>
         
@@ -165,6 +217,7 @@ function Modal({ show, closeModal, isLogin, toggleMode }) {
                   onChange={(e) => setUsername(e.target.value)}
                   className="auth-input"
                   disabled={isLoading}
+                  required
                 />
               </div>
               
@@ -178,6 +231,7 @@ function Modal({ show, closeModal, isLogin, toggleMode }) {
                     onChange={(e) => setEmail(e.target.value)}
                     className="auth-input"
                     disabled={isLoading}
+                    required
                   />
                 </div>
               )}
@@ -191,8 +245,26 @@ function Modal({ show, closeModal, isLogin, toggleMode }) {
                   onChange={(e) => setPassword(e.target.value)}
                   className="auth-input"
                   disabled={isLoading}
+                  minLength={isLogin ? 1 : 8}
+                  required
                 />
+                {!isLogin && <small>Минимум 8 символов</small>}
               </div>
+              
+              {!isLogin && (
+                <div className="form-group">
+                  <label htmlFor="confirmPassword">Подтвердите пароль</label>
+                  <input
+                    type="password"
+                    id="confirmPassword"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="auth-input"
+                    disabled={isLoading}
+                    required
+                  />
+                </div>
+              )}
               
               <button 
                 type="submit" 
@@ -210,6 +282,7 @@ function Modal({ show, closeModal, isLogin, toggleMode }) {
                   type="button" 
                   className="toggle-form-button"
                   onClick={toggleMode}
+                  disabled={isLoading}
                 >
                   {isLogin ? "Зарегистрироваться" : "Войти"}
                 </button>

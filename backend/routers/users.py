@@ -81,16 +81,36 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
     return user_service.create_user(db=db, user=user)
 
 @router.get("/", response_model=List[User])
-def read_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+def read_users(
+    skip: int = 0, 
+    limit: int = 100, 
+    db: Session = Depends(get_db), 
+    current_user: User = Depends(get_current_user)
+):
     """Получение списка всех пользователей (только для админа)"""
     # Здесь должна быть проверка прав доступа
     users = user_service.get_users(db, skip=skip, limit=limit)
     return users
 
+@router.get("/me", response_model=User)
+async def read_users_me(current_user: User = Depends(get_current_user)):
+    """Получение данных текущего пользователя"""
+    return current_user
+
 @router.get("/{user_id}", response_model=User)
-def read_user(user_id: int, db: Session = Depends(get_db)):
+def read_user(
+    user_id: int, 
+    db: Session = Depends(get_db), 
+    current_user: User = Depends(get_current_user)
+):
     """Получение данных пользователя по ID"""
-    # Здесь должна быть проверка прав доступа
+    # Проверяем права доступа - пользователь может получать только свои данные
+    if user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Недостаточно прав для просмотра данных другого пользователя"
+        )
+    
     db_user = user_service.get_user(db, user_id=user_id)
     if db_user is None:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
@@ -111,14 +131,45 @@ def update_user(
             detail="Недостаточно прав для обновления данных другого пользователя"
         )
     
-    # Вызываем сервис для обновления пользователя
-    db_user = user_service.update_user(db, user_id=user_id, user=user)
-    if db_user is None:
-        raise HTTPException(status_code=404, detail="Пользователь не найден")
+    try:
+        # Вызываем сервис для обновления пользователя
+        db_user = user_service.update_user(db, user_id=user_id, user=user)
+        if db_user is None:
+            raise HTTPException(status_code=404, detail="Пользователь не найден")
+        
+        return db_user
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     
-    return db_user
-
-@router.get("/me", response_model=User)
-async def read_users_me(current_user: User = Depends(get_current_user)):
-    """Получение данных текущего пользователя"""
-    return current_user
+@router.post("/{user_id}/change-password", response_model=User)
+def change_password(
+    user_id: int,
+    current_password: str,
+    new_password: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Изменение пароля пользователя"""
+    # Проверяем права доступа
+    if user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Недостаточно прав для изменения пароля другого пользователя"
+        )
+    
+    # Проверяем текущий пароль и устанавливаем новый
+    success = user_service.change_password(
+        db, 
+        user_id=user_id, 
+        current_password=current_password, 
+        new_password=new_password
+    )
+    
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Текущий пароль неверен"
+        )
+    
+    # Возвращаем обновленные данные пользователя
+    return user_service.get_user(db, user_id=user_id)

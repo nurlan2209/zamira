@@ -1,5 +1,3 @@
-// Update this file at: my-app/src/App.jsx
-
 import React, { useState, useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import HomePage from "./components/HomePage";
@@ -31,23 +29,7 @@ function App() {
       if (token) {
         try {
           // Пытаемся получить данные пользователя
-          const userData = await userService.getCurrentUser()
-            .catch(error => {
-              console.error("Error in getCurrentUser:", error);
-              // В случае ошибки используем базовые данные
-              return {
-                id: 1,
-                username: "user",
-                email: "user@example.com",
-                first_name: "Иван",
-                last_name: "Петров",
-                phone_number: "+7777777777",
-                address: "ул. Абая, 1",
-                city: "Астана",
-                is_active: true
-              };
-            });
-          
+          const userData = await userService.getCurrentUser();
           setUser(userData);
         } catch (error) {
           console.error("Ошибка авторизации:", error);
