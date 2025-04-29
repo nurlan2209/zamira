@@ -16,12 +16,16 @@ body {
   min-height: 100vh;
 }
 
+::-webkit-scrollbar {
+  display: none;
+}
+
 /* Фиксированное меню */
 .fixed-header {
   position: fixed;
   top: 0;
   left: 0;
-  width: 100%;
+  width: 1874px;
   background-color: rgb(0, 0, 0);
   z-index: 1000;
   padding: 1px 24px;
@@ -101,7 +105,6 @@ a {
 
 /* Футер */
 footer {
-  width: 100%;
   background-color: #000;
   color: #fff;
   padding: 60px 40px;

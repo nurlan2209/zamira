@@ -1,12 +1,15 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import QRCodePayment from "./QRCodePayment";
+import { orderService } from "../services/api";
+import useUserStore from "../store/index";
 import "../App.css";
 import "../styles/QRCodePayment.css";
 
 export default function PaymentPage() {
-  const location = useLocation(); // Получаем переданные данные
-  const { product, selectedSize } = location.state || {}; // Извлекаем товар и выбранный размер
+  const location = useLocation();
+  const { product, selectedSize } = location.state || {};
+  const user = useUserStore((state) => state.user);
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -15,9 +18,24 @@ export default function PaymentPage() {
   const [address, setAddress] = useState("");
   const [city, setCity] = useState("");
   const [paymentSuccess, setPaymentSuccess] = useState(false);
-  const [showQRCode, setShowQRCode] = useState(false); // Состояние для отображения QR-кода
+  const [showQRCode, setShowQRCode] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [orderNumber, setOrderNumber] = useState("");
 
-  const navigate = useNavigate(); // Для навигации обратно на главную страницу
+  const navigate = useNavigate();
+
+  // Заполняем форму данными пользователя, если они доступны
+  useEffect(() => {
+    if (user) {
+      setFirstName(user.first_name || "");
+      setLastName(user.last_name || "");
+      setEmail(user.email || "");
+      setPhoneNumber(user.phone_number || "");
+      setAddress(user.address || "");
+      setCity(user.city || "");
+    }
+  }, [user]);
 
   // Обработчик отправки формы
   const handleSubmit = (e) => {
@@ -33,10 +51,53 @@ export default function PaymentPage() {
   };
 
   // Обработчик успешной оплаты
-  const handlePaymentSuccess = (success = true) => {
+  const handlePaymentSuccess = async (success = true) => {
     if (success) {
-      setPaymentSuccess(true);
-      setShowQRCode(false);
+      setIsLoading(true);
+      setError("");
+      
+      try {
+        // Формируем данные заказа в соответствии с ожиданиями бэкенда
+        const orderData = {
+          shipping_address: `${city}, ${address}`,
+          payment_details: {
+            payment_method: "qr_code",
+            first_name: firstName,
+            last_name: lastName,
+            email: email,
+            phone_number: phoneNumber
+          },
+          items: [
+            {
+              product_id: product.id,
+              quantity: 1,
+              selected_size: selectedSize
+            }
+          ]
+        };
+        
+        // Отправляем заказ на сервер
+        const response = await orderService.createOrder(orderData);
+        console.log("Заказ успешно создан:", response);
+        
+        // Сохраняем номер заказа для отображения
+        setOrderNumber(response.id || "Новый");
+        
+        // Устанавливаем состояние успешной оплаты
+        setPaymentSuccess(true);
+        setShowQRCode(false);
+      } catch (err) {
+        console.error("Ошибка при создании заказа:", err);
+        setError("Произошла ошибка при создании заказа. Но не волнуйтесь, мы свяжемся с вами для подтверждения.");
+        
+        // Показываем пользователю, что оплата прошла успешно, даже если создание заказа не удалось
+        // Это поможет избежать негативного опыта, когда пользователь уже оплатил, но возникла техническая ошибка
+        setPaymentSuccess(true);
+        setShowQRCode(false);
+        setOrderNumber("Обрабатывается");
+      } finally {
+        setIsLoading(false);
+      }
     } else {
       // Пользователь отменил платеж
       setShowQRCode(false);
@@ -48,19 +109,44 @@ export default function PaymentPage() {
     navigate("/");
   };
 
+  // Переход к профилю с заказами
+  const handleGoToOrders = () => {
+    navigate("/profile", { state: { activeTab: "orders" } });
+  };
+
+  // Если нет продукта, перенаправляем на главную
+  if (!product && !paymentSuccess) {
+    return (
+      <div className="payment-page">
+        <h1>Ошибка оформления заказа</h1>
+        <p>Информация о товаре отсутствует. Пожалуйста, выберите товар для заказа.</p>
+        <button onClick={handleGoHome} className="go-home-button">
+          Вернуться на главную
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="payment-page">
       <h1>Оформление заказа</h1>
+
+      {error && <div className="payment-error">{error}</div>}
 
       {paymentSuccess ? (
         <div className="payment-success">
           <div className="success-icon">✓</div>
           <h2>Платеж успешно завершен!</h2>
           <p>Спасибо за покупку! Ваш заказ успешно оформлен.</p>
-          <p>Номер заказа: #{Math.floor(Math.random() * 10000)}</p>
-          <button onClick={handleGoHome} className="go-home-button">
-            Вернуться на главную
-          </button>
+          <p>Номер заказа: #{orderNumber}</p>
+          <div className="payment-success-buttons">
+            <button onClick={handleGoToOrders} className="view-orders-button">
+              Посмотреть мои заказы
+            </button>
+            <button onClick={handleGoHome} className="go-home-button">
+              Вернуться на главную
+            </button>
+          </div>
         </div>
       ) : (
         <div className="payment-content">
@@ -163,8 +249,12 @@ export default function PaymentPage() {
               </div>
             </div>
 
-            <button type="submit" className="submit-button">
-              Перейти к оплате
+            <button 
+              type="submit" 
+              className="submit-button" 
+              disabled={isLoading}
+            >
+              {isLoading ? "Загрузка..." : "Перейти к оплате"}
             </button>
           </form>
 

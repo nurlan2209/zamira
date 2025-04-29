@@ -1,16 +1,18 @@
-// Update this file at: my-app/src/components/ProfilePage.jsx
-
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { userService, orderService } from "../services/api";
 import useUserStore from "../store/index";
 import OrderHistory from "./OrderHistory";
 import "../styles/ProfilePage.css";
 
 const ProfilePage = () => {
+  const location = useLocation();
   const navigate = useNavigate();
   const user = useUserStore((state) => state.user);
   const setUser = useUserStore((state) => state.setUser);
+  
+  // Получаем активную вкладку из состояния навигации (если есть)
+  const initialTab = location.state?.activeTab || "profile";
   
   // Состояния для отображения данных пользователя и их редактирования
   const [userData, setUserData] = useState({
@@ -32,8 +34,9 @@ const ProfilePage = () => {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("profile"); // profile, orders, settings
+  const [activeTab, setActiveTab] = useState(initialTab); // profile, orders, settings
   const [orders, setOrders] = useState([]);
+  const [refreshOrders, setRefreshOrders] = useState(false); // Состояние для обновления списка заказов
   
   // Загрузка данных пользователя при монтировании компонента или при изменении user
   useEffect(() => {
@@ -58,7 +61,7 @@ const ProfilePage = () => {
           city: user.city || ""
         });
         
-        // Получаем заказы пользователя или используем пустой массив если ошибка
+        // Получаем заказы пользователя
         try {
           const userOrders = await orderService.getUserOrders();
           setOrders(userOrders);
@@ -76,7 +79,12 @@ const ProfilePage = () => {
     };
 
     fetchUserData();
-  }, [user, navigate]);
+  }, [user, navigate, refreshOrders]); // Добавляем refreshOrders в зависимости
+
+  // Обработчик для обновления списка заказов
+  const handleRefreshOrders = () => {
+    setRefreshOrders(prev => !prev);
+  };
 
   // Обработчик для переключения режима редактирования
   const toggleEditMode = () => {
@@ -161,14 +169,7 @@ const ProfilePage = () => {
       setIsLoading(true);
       
       // Вызов API для изменения пароля
-      await userService.updateUser(user.id, {
-        current_password: passwords.current,
-        password: passwords.new
-      }).catch(err => {
-        console.error('Error changing password:', err);
-        // В случае ошибки, считаем что пароль обновлен успешно
-        return true;
-      });
+      await userService.changePassword(user.id, passwords.current, passwords.new);
       
       setIsPasswordChangeMode(false);
       setSuccess("Пароль успешно изменен!");
@@ -210,7 +211,10 @@ const ProfilePage = () => {
           </button>
           <button 
             className={activeTab === "orders" ? "tab-active" : ""}
-            onClick={() => setActiveTab("orders")}
+            onClick={() => {
+              setActiveTab("orders");
+              handleRefreshOrders(); // Обновляем список заказов при переключении на вкладку
+            }}
           >
             Мои заказы
           </button>
@@ -382,7 +386,18 @@ const ProfilePage = () => {
       )}
 
       {activeTab === "orders" && (
-        <OrderHistory orders={orders} />
+        <div className="orders-section">
+          <div className="refresh-orders-container">
+            <button 
+              className="refresh-orders-button"
+              onClick={handleRefreshOrders}
+              disabled={isLoading}
+            >
+              {isLoading ? "Обновление..." : "Обновить заказы"}
+            </button>
+          </div>
+          <OrderHistory orders={orders} />
+        </div>
       )}
 
       {activeTab === "settings" && (

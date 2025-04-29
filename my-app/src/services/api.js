@@ -270,7 +270,9 @@ const userService = {
   }
 };
 
-// Сервис для работы с заказами
+/**
+ * Сервис для работы с заказами
+ */
 const orderService = {
   /**
    * Создание нового заказа
@@ -279,6 +281,8 @@ const orderService = {
    */
   createOrder: async (orderData) => {
     try {
+      console.log("Создание заказа с данными:", orderData);
+      
       const response = await fetchWithAuth(`${API_URL}/orders`, {
         method: 'POST',
         headers: {
@@ -286,40 +290,54 @@ const orderService = {
         },
         body: JSON.stringify(orderData),
       });
+      
       return handleResponse(response);
     } catch (error) {
       console.error('Ошибка при создании заказа:', error);
       throw error;
     }
   },
-
-  /**
+/**
    * Получение списка заказов пользователя
    * @returns {Promise<Array>} - список заказов
    */
-  getUserOrders: async () => {
-    try {
-      const response = await fetchWithAuth(`${API_URL}/orders`);
-      return handleResponse(response);
-    } catch (error) {
-      console.error('Ошибка при получении заказов пользователя:', error);
-      // Если ошибка, возвращаем пустой массив вместо исключения,
-      // чтобы избежать сбоя рендеринга компонента истории заказов
-      return [];
-    }
-  },
+getUserOrders: async () => {
+  try {
+    const response = await fetchWithAuth(`${API_URL}/orders`);
+    return handleResponse(response);
+  } catch (error) {
+    console.error('Ошибка при получении заказов пользователя:', error);
+    // Возвращаем пустой массив вместо ошибки для лучшего UX
+    return [];
+  }
+},
+
+/**
+ * Получение информации о конкретном заказе
+ * @param {number} orderId - ID заказа
+ * @returns {Promise<Object>} - данные заказа
+ */
+getOrderById: async (orderId) => {
+  try {
+    const response = await fetchWithAuth(`${API_URL}/orders/${orderId}`);
+    return handleResponse(response);
+  } catch (error) {
+    console.error('Ошибка при получении данных заказа:', error);
+    throw error;
+  }
+},
 
   /**
-   * Получение информации о конкретном заказе
+   * Получение детальной информации о заказе, включая товары
    * @param {number} orderId - ID заказа
-   * @returns {Promise<Object>} - данные заказа
+   * @returns {Promise<Object>} - детальные данные заказа
    */
-  getOrderById: async (orderId) => {
+  getOrderDetails: async (orderId) => {
     try {
-      const response = await fetchWithAuth(`${API_URL}/orders/${orderId}`);
+      const response = await fetchWithAuth(`${API_URL}/orders/${orderId}/details`);
       return handleResponse(response);
     } catch (error) {
-      console.error('Ошибка при получении данных заказа:', error);
+      console.error('Ошибка при получении деталей заказа:', error);
       throw error;
     }
   },

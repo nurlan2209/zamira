@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import '../styles/QRCodePayment.css';
 
-const QRCodePayment = ({ onSuccess, product }) => {
+const QRCodePayment = ({ onSuccess, product, onCancel }) => {
   const [timeLeft, setTimeLeft] = useState(20); // 20 секунд на оплату
   const [isExpired, setIsExpired] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -21,13 +21,13 @@ const QRCodePayment = ({ onSuccess, product }) => {
       setTimeLeft(timeLeft - 1);
     }, 1000);
     
-    // Имитация успешной оплаты после истечения таймера
-    if (timeLeft === 1) {
+    // Имитация успешной оплаты после истечения половины таймера (для демонстрации)
+    if (timeLeft === 10) {
       setIsProcessing(true);
       // Имитируем небольшую задержку перед успешным платежом
       setTimeout(() => {
         if (onSuccess) {
-          onSuccess();
+          onSuccess(true);
         }
       }, 1500);
     }
@@ -45,9 +45,8 @@ const QRCodePayment = ({ onSuccess, product }) => {
 
   // Отмена платежа
   const handleCancel = () => {
-    if (onSuccess) {
-      // Сбрасываем состояние и возвращаемся назад
-      onSuccess(false);
+    if (onCancel) {
+      onCancel();
     }
   };
 
@@ -57,7 +56,7 @@ const QRCodePayment = ({ onSuccess, product }) => {
     // Имитация проверки платежа с небольшой задержкой
     setTimeout(() => {
       if (onSuccess) {
-        onSuccess();
+        onSuccess(true);
       }
     }, 1500);
   };
@@ -102,11 +101,11 @@ const QRCodePayment = ({ onSuccess, product }) => {
           <div className="payment-details">
             <div className="payment-row">
               <span className="label">Товар:</span>
-              <span className="value">{product.name}</span>
+              <span className="value">{product?.name || "Товар"}</span>
             </div>
             <div className="payment-row">
               <span className="label">Сумма:</span>
-              <span className="value">{product.price}</span>
+              <span className="value">{product?.price || "0"}</span>
             </div>
             <div className="payment-row">
               <span className="label">Номер заказа:</span>
