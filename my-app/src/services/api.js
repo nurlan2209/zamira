@@ -3,8 +3,8 @@
  */
 
 const API_URL = 'http://localhost:8000/api';
-// Оставляем возможность переключения на мок-данные для тестирования
-const USE_MOCK_DATA = false;
+// По умолчанию всегда используем реальное API, но можем переключиться на мок-данные, если сервер недоступен
+const USE_MOCK_DATA = false; 
 
 // Вспомогательные функции для работы с API
 const handleResponse = async (response) => {
@@ -44,6 +44,78 @@ const debugFetch = async (url, options = {}) => {
   }
 };
 
+// Хранилище для мок-данных о продуктах (на случай недоступности API)
+const mockProducts = [
+  {
+    id: 1,
+    name: "Shadow Ember",
+    price: "$190",
+    actual_price: 190.0,
+    img: "https://i.pinimg.com/736x/9d/4f/94/9d4f94d406f3bb64676b9cdea594839d.jpg",
+    category: "Hoodies",
+    sizes: ["S", "M", "L", "XL"],
+    rating: 4.5,
+    reviews: [
+      {"user": "Айгуль", "review": "Очень красивый худи, комфортный и стильный!"},
+      {"user": "Руслан", "review": "Ткань приятная, но немного маломерит."}
+    ],
+    description: "Стильный худи Shadow Ember из премиальной ткани. Идеально подойдет для создания модного повседневного образа."
+  },
+  {
+    id: 2,
+    name: "Frost Pulse",
+    price: "$49",
+    actual_price: 49.0,
+    img: "https://i.pinimg.com/736x/66/bc/11/66bc1140083fd5a840e66c4634e02270.jpg",
+    category: "Hoodies",
+    sizes: ["S", "M", "L"],
+    rating: 4.0,
+    reviews: [
+      {"user": "Мадина", "review": "Очень приятная ткань, но в районе талии немного широковато."},
+      {"user": "Данияр", "review": "Хороший худи, но материал мог бы быть плотнее."}
+    ],
+    description: "Легкий худи Frost Pulse идеально подойдет для прохладных летних вечеров."
+  },
+  {
+    id: 10,
+    name: "Carbon Veil",
+    price: "$190",
+    actual_price: 190.0,
+    img: "https://i.pinimg.com/736x/79/29/0f/79290fe785787fbc80dfc172cec8a747.jpg",
+    category: "Bottom",
+    sizes: ["S", "M", "L", "XL"],
+    rating: 4.5,
+    reviews: [
+      {"user": "Айгуль", "review": "Удобные штаны, хороший материал!"},
+      {"user": "Руслан", "review": "Хорошо сидят на фигуре."}
+    ],
+    description: "Штаны в стиле карго с удобными боковыми карманами, выполненные из прочной ткани."
+  }
+];
+
+// Получение данных о товаре по ID из мок-данных
+const getMockProductById = (id) => {
+  id = parseInt(id);
+  return mockProducts.find(product => product.id === id) || null;
+};
+
+// Поиск товаров по названию в мок-данных
+const searchMockProducts = (query) => {
+  query = query.toLowerCase();
+  return mockProducts.filter(product => 
+    product.name.toLowerCase().includes(query) || 
+    product.category.toLowerCase().includes(query)
+  );
+};
+
+// Фильтрация товаров по категории в мок-данных
+const getMockProducts = (category) => {
+  if (!category) {
+    return mockProducts;
+  }
+  return mockProducts.filter(product => product.category === category);
+};
+
 // Сервис для работы с продуктами
 const productService = {
   /**
@@ -52,10 +124,6 @@ const productService = {
    * @returns {Promise<Array>} - список товаров
    */
   getProducts: async (category = null) => {
-    if (USE_MOCK_DATA) {
-      return getMockProducts(category);
-    }
-    
     try {
       const url = category 
         ? `${API_URL}/products?category=${encodeURIComponent(category)}` 
@@ -65,7 +133,13 @@ const productService = {
       return handleResponse(response);
     } catch (error) {
       console.warn('Ошибка при получении данных с сервера, используем локальные данные:', error);
-      return getMockProducts(category);
+      
+      // Если не удалось получить данные с сервера, используем мок-данные
+      if (USE_MOCK_DATA) {
+        return getMockProducts(category);
+      }
+      
+      throw error;
     }
   },
 
@@ -75,16 +149,18 @@ const productService = {
    * @returns {Promise<Object>} - данные о товаре
    */
   getProductById: async (id) => {
-    if (USE_MOCK_DATA) {
-      return getMockProductById(id);
-    }
-    
     try {
       const response = await fetch(`${API_URL}/products/${id}`);
       return handleResponse(response);
     } catch (error) {
-      console.warn('Ошибка при получении данных с сервера, используем локальные данные:', error);
-      return getMockProductById(id);
+      console.warn('Ошибка при получении данных с сервера:', error);
+      
+      // Если не удалось получить данные с сервера, используем мок-данные
+      if (USE_MOCK_DATA) {
+        return getMockProductById(id);
+      }
+      
+      throw error;
     }
   },
 
@@ -94,16 +170,18 @@ const productService = {
    * @returns {Promise<Array>} - список найденных товаров
    */
   searchProducts: async (query) => {
-    if (USE_MOCK_DATA) {
-      return searchMockProducts(query);
-    }
-    
     try {
       const response = await fetch(`${API_URL}/products/search?query=${encodeURIComponent(query)}`);
       return handleResponse(response);
     } catch (error) {
-      console.warn('Ошибка при получении данных с сервера, используем локальные данные:', error);
-      return searchMockProducts(query);
+      console.warn('Ошибка при получении данных с сервера:', error);
+      
+      // Если не удалось получить данные с сервера, используем мок-данные
+      if (USE_MOCK_DATA) {
+        return searchMockProducts(query);
+      }
+      
+      throw error;
     }
   },
 
@@ -115,26 +193,32 @@ const productService = {
    * @returns {Promise<Object>} - обновленные данные о товаре
    */
   addReview: async (productId, user, review) => {
-    if (USE_MOCK_DATA) {
-      // Имитация добавления отзыва в демо-режиме
-      const product = getMockProductById(productId);
-      if (product) {
-        product.reviews.push({ user, review });
-      }
-      return product;
-    }
-    
     const token = localStorage.getItem('token');
     
-    const response = await debugFetch(`${API_URL}/products/${productId}/reviews`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-      },
-      body: JSON.stringify({ user, review }),
-    });
-    return handleResponse(response);
+    try {
+      const response = await debugFetch(`${API_URL}/products/${productId}/reviews`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ user, review }),
+      });
+      return handleResponse(response);
+    } catch (error) {
+      console.warn('Ошибка при добавлении отзыва:', error);
+      
+      // Если включен режим мок-данных и произошла ошибка
+      if (USE_MOCK_DATA) {
+        const product = getMockProductById(productId);
+        if (product) {
+          product.reviews.push({ user, review });
+          return product;
+        }
+      }
+      
+      throw error;
+    }
   }
 };
 
@@ -146,24 +230,30 @@ const userService = {
    * @returns {Promise<Object>} - данные созданного пользователя
    */
   register: async (userData) => {
-    if (USE_MOCK_DATA) {
-      // Имитация успешной регистрации
-      return {
-        id: 999,
-        username: userData.username,
-        email: userData.email,
-        is_active: true
-      };
+    try {
+      const response = await debugFetch(`${API_URL}/users`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(userData),
+      });
+      return handleResponse(response);
+    } catch (error) {
+      console.error('Ошибка при регистрации:', error);
+      
+      // Если включен режим мок-данных и произошла ошибка
+      if (USE_MOCK_DATA) {
+        return {
+          id: 999,
+          username: userData.username,
+          email: userData.email,
+          is_active: true
+        };
+      }
+      
+      throw error;
     }
-    
-    const response = await debugFetch(`${API_URL}/users`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(userData),
-    });
-    return handleResponse(response);
   },
 
   /**
@@ -173,27 +263,33 @@ const userService = {
    * @returns {Promise<Object>} - данные аутентификации с токеном
    */
   login: async (username, password) => {
-    if (USE_MOCK_DATA) {
-      // Имитация успешного входа
-      return {
-        access_token: "mock_token_for_demo_purposes",
-        token_type: "bearer"
-      };
-    }
-    
     // Для FastAPI требуется отправка формы в формате x-www-form-urlencoded
     const formData = new URLSearchParams();
     formData.append('username', username);
     formData.append('password', password);
 
-    const response = await debugFetch(`${API_URL}/users/token`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: formData,
-    });
-    return handleResponse(response);
+    try {
+      const response = await debugFetch(`${API_URL}/users/token`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: formData,
+      });
+      return handleResponse(response);
+    } catch (error) {
+      console.error('Ошибка при входе:', error);
+      
+      // Если включен режим мок-данных и произошла ошибка
+      if (USE_MOCK_DATA) {
+        return {
+          access_token: "mock_token_for_demo_purposes",
+          token_type: "bearer"
+        };
+      }
+      
+      throw error;
+    }
   },
 
   /**
@@ -201,59 +297,78 @@ const userService = {
    * @returns {Promise<Object>} - данные пользователя
    */
   getCurrentUser: async () => {
-    if (USE_MOCK_DATA) {
-      // Имитация данных пользователя
-      return {
-        id: 1,
-        username: "demo_user",
-        email: "demo@example.com",
-        first_name: "Демо",
-        last_name: "Пользователь",
-        is_active: true
-      };
-    }
-    
     const token = localStorage.getItem('token');
     if (!token) {
       throw new Error('Пользователь не аутентифицирован');
     }
 
-    // Проверяем формат токена
-    console.log('Используемый токен:', token);
-    
-    const response = await debugFetch(`${API_URL}/users/me`, {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      },
-    });
-    return handleResponse(response);
+    try {
+      const response = await debugFetch(`${API_URL}/users/me`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+      });
+      return handleResponse(response);
+    } catch (error) {
+      console.error('Ошибка при получении данных пользователя:', error);
+      
+      // Если включен режим мок-данных и произошла ошибка
+      if (USE_MOCK_DATA) {
+        return {
+          id: 1,
+          username: "user",
+          email: "user@example.com",
+          first_name: "Иван",
+          last_name: "Петров",
+          phone_number: "+7777777777",
+          address: "ул. Абая, 1",
+          city: "Астана",
+          is_active: true
+        };
+      }
+      
+      throw error;
+    }
   },
 
   /**
    * Получение данных пользователя по ID
+   * @param {number} userId - ID пользователя
    * @returns {Promise<Object>} - данные пользователя
    */
   getUserById: async (userId) => {
-    if (USE_MOCK_DATA) {
-      return {
-        id: userId,
-        username: "user" + userId,
-        email: `user${userId}@example.com`,
-        is_active: true
-      };
-    }
-    
     const token = localStorage.getItem('token');
     if (!token) {
       throw new Error('Пользователь не аутентифицирован');
     }
     
-    const response = await debugFetch(`${API_URL}/users/${userId}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      },
-    });
-    return handleResponse(response);
+    try {
+      const response = await debugFetch(`${API_URL}/users/${userId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+      });
+      return handleResponse(response);
+    } catch (error) {
+      console.error('Ошибка при получении данных пользователя:', error);
+      
+      // Если включен режим мок-данных и произошла ошибка
+      if (USE_MOCK_DATA) {
+        return {
+          id: userId,
+          username: "user",
+          email: `user@example.com`,
+          first_name: "Иван",
+          last_name: "Петров",
+          phone_number: "+7777777777",
+          address: "ул. Абая, 1",
+          city: "Астана",
+          is_active: true
+        };
+      }
+      
+      throw error;
+    }
   },
 
   /**
@@ -263,35 +378,41 @@ const userService = {
    * @returns {Promise<Object>} - обновленные данные пользователя
    */
   updateUser: async (userId, userData) => {
-    if (USE_MOCK_DATA) {
-      // Имитация обновления данных пользователя
-      return {
-        id: userId,
-        username: userData.username || "demo_user",
-        email: userData.email || "demo@example.com",
-        first_name: userData.first_name || "Демо",
-        last_name: userData.last_name || "Пользователь",
-        phone_number: userData.phone_number || "+7777777777",
-        address: userData.address || "Тестовый адрес",
-        city: userData.city || "Астана",
-        is_active: true
-      };
-    }
-    
     const token = localStorage.getItem('token');
     if (!token) {
       throw new Error('Пользователь не аутентифицирован');
     }
 
-    const response = await debugFetch(`${API_URL}/users/${userId}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
-      body: JSON.stringify(userData),
-    });
-    return handleResponse(response);
+    try {
+      const response = await debugFetch(`${API_URL}/users/${userId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(userData),
+      });
+      return handleResponse(response);
+    } catch (error) {
+      console.error('Ошибка при обновлении данных пользователя:', error);
+      
+      // Если включен режим мок-данных и произошла ошибка
+      if (USE_MOCK_DATA) {
+        return {
+          id: userId,
+          username: userData.username || "user",
+          email: userData.email || "user@example.com",
+          first_name: userData.first_name || "Иван",
+          last_name: userData.last_name || "Петров",
+          phone_number: userData.phone_number || "+7777777777",
+          address: userData.address || "ул. Абая, 1",
+          city: userData.city || "Астана",
+          is_active: true
+        };
+      }
+      
+      throw error;
+    }
   }
 };
 
@@ -303,35 +424,25 @@ const orderService = {
    * @returns {Promise<Object>} - созданный заказ
    */
   createOrder: async (orderData) => {
-    if (USE_MOCK_DATA) {
-      // Имитация создания заказа
-      return {
-        id: Math.floor(Math.random() * 1000) + 1,
-        user_id: 1,
-        total_price: orderData.items.reduce((sum, item) => sum + (item.price * item.quantity), 0),
-        status: "pending",
-        shipping_address: orderData.shipping_address,
-        payment_details: orderData.payment_details,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        items: orderData.items
-      };
-    }
-    
     const token = localStorage.getItem('token');
     if (!token) {
       throw new Error('Пользователь не аутентифицирован');
     }
 
-    const response = await debugFetch(`${API_URL}/orders`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
-      body: JSON.stringify(orderData),
-    });
-    return handleResponse(response);
+    try {
+      const response = await debugFetch(`${API_URL}/orders`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(orderData),
+      });
+      return handleResponse(response);
+    } catch (error) {
+      console.error('Ошибка при создании заказа:', error);
+      throw error;
+    }
   },
 
   /**
@@ -339,60 +450,22 @@ const orderService = {
    * @returns {Promise<Array>} - список заказов
    */
   getUserOrders: async () => {
-    if (USE_MOCK_DATA) {
-      // Имитация списка заказов
-      return [
-        {
-          id: 1,
-          user_id: 1,
-          total_price: 190.0,
-          status: "delivered",
-          shipping_address: "г. Астана, ул. Абая 1",
-          created_at: "2025-04-20T10:30:00Z",
-          updated_at: "2025-04-22T14:15:00Z",
-          items: [
-            {
-              product_id: 1,
-              quantity: 1,
-              selected_size: "M"
-            }
-          ]
-        },
-        {
-          id: 2,
-          user_id: 1,
-          total_price: 380.0,
-          status: "shipped",
-          shipping_address: "г. Астана, ул. Абая 1",
-          created_at: "2025-04-25T15:45:00Z",
-          updated_at: "2025-04-26T09:20:00Z",
-          items: [
-            {
-              product_id: 5,
-              quantity: 1,
-              selected_size: "L"
-            },
-            {
-              product_id: 10,
-              quantity: 1,
-              selected_size: "M"
-            }
-          ]
-        }
-      ];
-    }
-    
     const token = localStorage.getItem('token');
     if (!token) {
       throw new Error('Пользователь не аутентифицирован');
     }
 
-    const response = await debugFetch(`${API_URL}/orders`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
-    });
-    return handleResponse(response);
+    try {
+      const response = await debugFetch(`${API_URL}/orders`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      return handleResponse(response);
+    } catch (error) {
+      console.error('Ошибка при получении заказов пользователя:', error);
+      throw error;
+    }
   },
 
   /**
@@ -401,23 +474,75 @@ const orderService = {
    * @returns {Promise<Object>} - данные заказа
    */
   getOrderById: async (orderId) => {
-    if (USE_MOCK_DATA) {
-      // Имитация данных заказа
-      const mockOrders = await orderService.getUserOrders();
-      return mockOrders.find(order => order.id === orderId) || null;
-    }
-    
     const token = localStorage.getItem('token');
     if (!token) {
       throw new Error('Пользователь не аутентифицирован');
     }
 
-    const response = await debugFetch(`${API_URL}/orders/${orderId}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
-    });
-    return handleResponse(response);
+    try {
+      const response = await debugFetch(`${API_URL}/orders/${orderId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      return handleResponse(response);
+    } catch (error) {
+      console.error('Ошибка при получении данных заказа:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Обновление статуса заказа
+   * @param {number} orderId - ID заказа
+   * @param {string} status - новый статус
+   * @returns {Promise<Object>} - обновленные данные заказа
+   */
+  updateOrderStatus: async (orderId, status) => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw new Error('Пользователь не аутентифицирован');
+    }
+
+    try {
+      const response = await debugFetch(`${API_URL}/orders/${orderId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ status }),
+      });
+      return handleResponse(response);
+    } catch (error) {
+      console.error('Ошибка при обновлении статуса заказа:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Отмена заказа
+   * @param {number} orderId - ID заказа
+   * @returns {Promise<Object>} - результат операции
+   */
+  cancelOrder: async (orderId) => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw new Error('Пользователь не аутентифицирован');
+    }
+
+    try {
+      const response = await debugFetch(`${API_URL}/orders/${orderId}/cancel`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      return handleResponse(response);
+    } catch (error) {
+      console.error('Ошибка при отмене заказа:', error);
+      throw error;
+    }
   }
 };
 

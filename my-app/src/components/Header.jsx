@@ -95,7 +95,7 @@ const Header = memo(({ user, onLogout, openModal, handleCategoryChange }) => {
         <div className="auth-controls">
           {user ? (
             <div className="user-menu">
-              <span className="username">Привет, {user.username}</span>
+              <span className="username">Привет, {user.username || user.first_name}</span>
               <button className="profile-button" onClick={() => navigate("/profile")}>
                 Профиль
               </button>

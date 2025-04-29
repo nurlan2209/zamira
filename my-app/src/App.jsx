@@ -4,6 +4,7 @@ import HomePage from "./components/HomePage";
 import CatalogPage from "./components/CatalogPage";
 import ProductPage from "./components/ProductPage";
 import PaymentPage from "./components/PaymentPage";
+import ProfilePage from "./components/ProfilePage";
 import AuthPage from "./components/AuthPage";
 import Modal from "./components/Modal";
 import useUserStore from "./store/index";
@@ -33,6 +34,11 @@ function App() {
             id: 1,
             username: "user",
             email: "user@example.com",
+            first_name: "Иван",
+            last_name: "Петров",
+            phone_number: "+7777777777",
+            address: "ул. Абая, 1",
+            city: "Астана",
             is_active: true
           };
           
@@ -73,6 +79,15 @@ function App() {
 
   // Компонент для защищенных маршрутов
   const PrivateRoute = ({ children }) => {
+    if (loading) {
+      return (
+        <div className="loading-container">
+          <div className="loading-spinner"></div>
+          <p>Загрузка...</p>
+        </div>
+      );
+    }
+    
     return user ? children : <Navigate to="/auth" />;
   };
 
@@ -107,7 +122,16 @@ function App() {
             </PrivateRoute>
           } 
         />
+        <Route 
+          path="/profile" 
+          element={
+            <PrivateRoute>
+              <ProfilePage />
+            </PrivateRoute>
+          } 
+        />
         <Route path="/auth" element={user ? <Navigate to="/" /> : <AuthPage />} />
+        <Route path="*" element={<Navigate to="/" />} />
       </Routes>
 
       {/* Модальное окно для регистрации/входа */}
