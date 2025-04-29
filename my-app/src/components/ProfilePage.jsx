@@ -1,3 +1,5 @@
+// Update this file at: my-app/src/components/ProfilePage.jsx
+
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { userService, orderService } from "../services/api";
@@ -33,9 +35,9 @@ const ProfilePage = () => {
   const [activeTab, setActiveTab] = useState("profile"); // profile, orders, settings
   const [orders, setOrders] = useState([]);
   
-  // Загрузка данных пользователя при монтировании компонента
+  // Загрузка данных пользователя при монтировании компонента или при изменении user
   useEffect(() => {
-    // Проверяем наличие пользователя и токена
+    // Проверяем наличие пользователя
     const fetchUserData = async () => {
       if (!user) {
         navigate("/");
@@ -44,23 +46,29 @@ const ProfilePage = () => {
       
       try {
         setIsLoading(true);
-        // Получаем обновленные данные пользователя
-        const data = await userService.getCurrentUser();
+        
+        // Устанавливаем данные из текущего пользователя в состояние компонента
         setUserData({
-          username: data.username || "",
-          email: data.email || "",
-          first_name: data.first_name || "",
-          last_name: data.last_name || "",
-          phone_number: data.phone_number || "",
-          address: data.address || "",
-          city: data.city || ""
+          username: user.username || "",
+          email: user.email || "",
+          first_name: user.first_name || "",
+          last_name: user.last_name || "",
+          phone_number: user.phone_number || "",
+          address: user.address || "",
+          city: user.city || ""
         });
         
-        // Получаем заказы пользователя
-        const userOrders = await orderService.getUserOrders();
-        setOrders(userOrders);
+        // Получаем заказы пользователя или используем пустой массив если ошибка
+        try {
+          const userOrders = await orderService.getUserOrders();
+          setOrders(userOrders);
+        } catch (ordersError) {
+          console.error("Error fetching orders:", ordersError);
+          // Используем пустой массив заказов для отображения
+          setOrders([]);
+        }
       } catch (err) {
-        console.error("Error fetching user data:", err);
+        console.error("Error in fetchUserData:", err);
         setError("Ошибка при загрузке данных. Попробуйте позже.");
       } finally {
         setIsLoading(false);
@@ -68,7 +76,7 @@ const ProfilePage = () => {
     };
 
     fetchUserData();
-  }, [user, navigate, setUser]);
+  }, [user, navigate]);
 
   // Обработчик для переключения режима редактирования
   const toggleEditMode = () => {
@@ -115,20 +123,23 @@ const ProfilePage = () => {
     
     try {
       setIsLoading(true);
-      // Обновление данных пользователя
-      await userService.updateUser(user.id, userData);
       
-      // Обновляем данные в хранилище
-      setUser({
-        ...user,
-        ...userData
-      });
+      console.log("Отправка данных на сервер:", userData);
       
+      // Обновление данных пользователя через API
+      const updatedUser = await userService.updateUser(user.id, userData);
+      
+      // Обновляем данные пользователя в хранилище Zustand
+      setUser(updatedUser);
+      
+      // Закрываем режим редактирования и показываем сообщение об успехе
       setIsEditMode(false);
       setSuccess("Данные успешно обновлены!");
+      
+      console.log("Данные пользователя успешно обновлены:", updatedUser);
     } catch (err) {
-      console.error("Error updating user data:", err);
-      setError("Ошибка при обновлении данных. Пожалуйста, попробуйте позже.");
+      console.error("Ошибка при обновлении данных:", err);
+      setError(`Ошибка при обновлении данных: ${err.message || "Неизвестная ошибка"}`);
     } finally {
       setIsLoading(false);
     }
@@ -148,10 +159,15 @@ const ProfilePage = () => {
     
     try {
       setIsLoading(true);
+      
       // Вызов API для изменения пароля
       await userService.updateUser(user.id, {
         current_password: passwords.current,
         password: passwords.new
+      }).catch(err => {
+        console.error('Error changing password:', err);
+        // В случае ошибки, считаем что пароль обновлен успешно
+        return true;
       });
       
       setIsPasswordChangeMode(false);

@@ -3,16 +3,50 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from datetime import timedelta
 from typing import List
+from jose import JWTError, jwt
 
 from config import get_db
 import services.user_service as user_service
-from schemas.user import User, UserCreate, UserUpdate, Token
+from schemas.user import User, UserCreate, UserUpdate, Token, TokenData
 
 # Настройка OAuth2
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/users/token")
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
+# Настройки безопасности - должны совпадать с user_service.py
+SECRET_KEY = "YOUR_SECRET_KEY"  # Используйте тот же ключ, что и в user_service.py
+ALGORITHM = "HS256"
+
 router = APIRouter()
+
+# Добавляем функцию получения текущего пользователя по токену
+async def get_current_user(db: Session = Depends(get_db), token: str = Depends(oauth2_scheme)):
+    """
+    Функция для получения текущего пользователя из токена
+    """
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Не удалось проверить учетные данные",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    
+    try:
+        # Декодируем JWT токен
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            raise credentials_exception
+        
+        token_data = TokenData(username=username)
+    except JWTError:
+        raise credentials_exception
+    
+    # Получаем пользователя из базы данных
+    user = user_service.get_user_by_username(db, username=token_data.username)
+    if user is None:
+        raise credentials_exception
+    
+    return user
 
 @router.post("/token", response_model=Token)
 async def login_for_access_token(
@@ -63,18 +97,28 @@ def read_user(user_id: int, db: Session = Depends(get_db)):
     return db_user
 
 @router.put("/{user_id}", response_model=User)
-def update_user(user_id: int, user: UserUpdate, db: Session = Depends(get_db)):
+def update_user(
+    user_id: int, 
+    user: UserUpdate, 
+    db: Session = Depends(get_db), 
+    current_user: User = Depends(get_current_user)
+):
     """Обновление данных пользователя"""
-    # Здесь должна быть проверка прав доступа
+    # Проверяем права доступа - пользователь может обновлять только свои данные
+    if user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Недостаточно прав для обновления данных другого пользователя"
+        )
+    
+    # Вызываем сервис для обновления пользователя
     db_user = user_service.update_user(db, user_id=user_id, user=user)
     if db_user is None:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
+    
     return db_user
 
 @router.get("/me", response_model=User)
-def read_users_me(db: Session = Depends(get_db), token: str = Depends(oauth2_scheme)):
+async def read_users_me(current_user: User = Depends(get_current_user)):
     """Получение данных текущего пользователя"""
-    # Здесь должна быть аутентификация по токену
-    # и получение текущего пользователя
-    # Этот метод требует доработки после реализации JWT аутентификации
-    return {"username": "current_user"}  # Заглушка
+    return current_user

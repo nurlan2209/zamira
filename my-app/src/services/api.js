@@ -242,8 +242,9 @@ const userService = {
     } catch (error) {
       console.error('Ошибка при регистрации:', error);
       
-      // Если включен режим мок-данных и произошла ошибка
+      // Всегда возвращаем мок-данные при включенном режиме
       if (USE_MOCK_DATA) {
+        console.log('Using mock data for registration');
         return {
           id: 999,
           username: userData.username,
@@ -263,6 +264,15 @@ const userService = {
    * @returns {Promise<Object>} - данные аутентификации с токеном
    */
   login: async (username, password) => {
+    // Если режим мок-данных включен, сразу возвращаем мок-токен
+    if (USE_MOCK_DATA) {
+      console.log('Using mock data for login');
+      return {
+        access_token: "mock_token_for_demo_purposes",
+        token_type: "bearer"
+      };
+    }
+
     // Для FastAPI требуется отправка формы в формате x-www-form-urlencoded
     const formData = new URLSearchParams();
     formData.append('username', username);
@@ -279,15 +289,6 @@ const userService = {
       return handleResponse(response);
     } catch (error) {
       console.error('Ошибка при входе:', error);
-      
-      // Если включен режим мок-данных и произошла ошибка
-      if (USE_MOCK_DATA) {
-        return {
-          access_token: "mock_token_for_demo_purposes",
-          token_type: "bearer"
-        };
-      }
-      
       throw error;
     }
   },
@@ -302,6 +303,22 @@ const userService = {
       throw new Error('Пользователь не аутентифицирован');
     }
 
+    // Если режим мок-данных включен, сразу возвращаем мок-пользователя
+    if (USE_MOCK_DATA) {
+      console.log('Using mock data for current user');
+      return {
+        id: 1,
+        username: "user",
+        email: "user@example.com",
+        first_name: "Иван",
+        last_name: "Петров",
+        phone_number: "+7777777777",
+        address: "ул. Абая, 1",
+        city: "Астана",
+        is_active: true
+      };
+    }
+
     try {
       const response = await debugFetch(`${API_URL}/users/me`, {
         headers: {
@@ -311,22 +328,6 @@ const userService = {
       return handleResponse(response);
     } catch (error) {
       console.error('Ошибка при получении данных пользователя:', error);
-      
-      // Если включен режим мок-данных и произошла ошибка
-      if (USE_MOCK_DATA) {
-        return {
-          id: 1,
-          username: "user",
-          email: "user@example.com",
-          first_name: "Иван",
-          last_name: "Петров",
-          phone_number: "+7777777777",
-          address: "ул. Абая, 1",
-          city: "Астана",
-          is_active: true
-        };
-      }
-      
       throw error;
     }
   },
@@ -384,6 +385,8 @@ const userService = {
     }
 
     try {
+      console.log('Отправка запроса на обновление пользователя:', userData);
+      
       const response = await debugFetch(`${API_URL}/users/${userId}`, {
         method: 'PUT',
         headers: {
@@ -392,28 +395,16 @@ const userService = {
         },
         body: JSON.stringify(userData),
       });
-      return handleResponse(response);
+      
+      const updatedUser = await handleResponse(response);
+      console.log('Получены обновленные данные пользователя:', updatedUser);
+      
+      return updatedUser;
     } catch (error) {
       console.error('Ошибка при обновлении данных пользователя:', error);
-      
-      // Если включен режим мок-данных и произошла ошибка
-      if (USE_MOCK_DATA) {
-        return {
-          id: userId,
-          username: userData.username || "user",
-          email: userData.email || "user@example.com",
-          first_name: userData.first_name || "Иван",
-          last_name: userData.last_name || "Петров",
-          phone_number: userData.phone_number || "+7777777777",
-          address: userData.address || "ул. Абая, 1",
-          city: userData.city || "Астана",
-          is_active: true
-        };
-      }
-      
       throw error;
     }
-  }
+  },
 };
 
 // Сервис для работы с заказами

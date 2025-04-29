@@ -68,7 +68,8 @@ def update_user(db: Session, user_id: int, user: UserUpdate):
     
     # Обновляем поля объекта
     for key, value in update_data.items():
-        setattr(db_user, key, value)
+        if hasattr(db_user, key):  # Проверяем, существует ли такое поле
+            setattr(db_user, key, value)
     
     db.commit()
     db.refresh(db_user)
