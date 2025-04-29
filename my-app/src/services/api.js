@@ -311,21 +311,23 @@ const userService = {
  * Сервис для работы с заказами
  */
 const orderService = {
-  /**
-   * Создание нового заказа
-   * @param {Object} orderData - данные заказа
-   * @returns {Promise<Object>} - созданный заказ
-   */
-  createOrder: async (orderData) => {
+/**
+ * Создание нового заказа
+ * @param {Object} orderData - данные заказа
+ * @returns {Promise<Object>} - созданный заказ
+ */
+createOrder: async (orderData) => {
+  try {
+    console.log("Создание заказа с данными:", orderData);
+    
+    // Получаем текущий токен
+    const token = localStorage.getItem("token");
+    if (!token) {
+      throw new Error("Не авторизован. Пожалуйста, войдите снова.");
+    }
+    
+    // Добавляем обработку сетевых ошибок
     try {
-      console.log("Создание заказа с данными:", orderData);
-      
-      // Получаем текущий токен
-      const token = localStorage.getItem("token");
-      if (!token) {
-        throw new Error("Не авторизован. Пожалуйста, войдите снова.");
-      }
-      
       // Сначала получаем данные пользователя
       const userResponse = await fetch(`${API_URL}/users/me`, {
         headers: {
@@ -339,7 +341,7 @@ const orderService = {
           localStorage.removeItem("token");
           throw new Error("Токен авторизации истек или недействителен. Пожалуйста, войдите снова.");
         }
-        throw new Error("Ошибка при получении данных пользователя");
+        throw new Error(`Ошибка при получении данных пользователя: ${userResponse.status}`);
       }
       
       const userData = await userResponse.json();
@@ -362,25 +364,38 @@ const orderService = {
         }),
       });
       
-      // Обработка ошибок
+      // Проверка на сетевую ошибку
       if (!response.ok) {
         const errorText = await response.text();
-        let errorMessage;
+        console.log("Полный ответ сервера:", errorText);
+        
         try {
           const errorData = JSON.parse(errorText);
-          errorMessage = errorData.detail || JSON.stringify(errorData);
+          console.log("Детали ошибки:", errorData);
+          errorMessage = typeof errorData.detail === 'object' 
+            ? JSON.stringify(errorData.detail) 
+            : errorData.detail || JSON.stringify(errorData);
         } catch (e) {
-          errorMessage = errorText || `Ошибка сервера: ${response.status}`;
+          errorMessage = errorText;
         }
+        
         throw new Error(errorMessage);
       }
       
       return await response.json();
     } catch (error) {
-      console.error('Ошибка при создании заказа:', error);
+      // Перехватываем сетевые ошибки
+      if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
+        console.error('Сетевая ошибка при создании заказа:', error);
+        throw new Error('Не удалось соединиться с сервером. Пожалуйста, проверьте подключение к интернету и доступность сервера.');
+      }
       throw error;
     }
-  },
+  } catch (error) {
+    console.error('Ошибка при создании заказа:', error);
+    throw error;
+  }
+},
   
   /**
    * Получение списка заказов пользователя

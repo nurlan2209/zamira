@@ -5,6 +5,7 @@ const QRCodePayment = ({ onSuccess, product, onCancel }) => {
   const [timeLeft, setTimeLeft] = useState(20); // 20 секунд на оплату
   const [isExpired, setIsExpired] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [error, setError] = useState(null);
   
   // QR-код (это заглушка, в реальном приложении здесь будет генерироваться настоящий QR-код)
   const qrCodeUrl = "data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' version='1.1' viewBox='0 0 200 200' stroke='none'%3e%3crect width='200' height='200' fill='%23ffffff'/%3e%3cdefs%3e%3crect id='p' width='8' height='8'/%3e%3c/defs%3e%3cg fill='%23000000'%3e%3cuse x='32' y='32' href='%23p'/%3e%3cuse x='32' y='40' href='%23p'/%3e%3cuse x='32' y='48' href='%23p'/%3e%3cuse x='32' y='56' href='%23p'/%3e%3cuse x='32' y='64' href='%23p'/%3e%3cuse x='32' y='72' href='%23p'/%3e%3cuse x='32' y='80' href='%23p'/%3e%3cuse x='40' y='32' href='%23p'/%3e%3cuse x='40' y='80' href='%23p'/%3e%3cuse x='48' y='32' href='%23p'/%3e%3cuse x='48' y='48' href='%23p'/%3e%3cuse x='48' y='56' href='%23p'/%3e%3cuse x='48' y='64' href='%23p'/%3e%3cuse x='48' y='80' href='%23p'/%3e%3cuse x='56' y='32' href='%23p'/%3e%3cuse x='56' y='48' href='%23p'/%3e%3cuse x='56' y='56' href='%23p'/%3e%3cuse x='56' y='64' href='%23p'/%3e%3cuse x='56' y='80' href='%23p'/%3e%3cuse x='64' y='32' href='%23p'/%3e%3cuse x='64' y='48' href='%23p'/%3e%3cuse x='64' y='56' href='%23p'/%3e%3cuse x='64' y='64' href='%23p'/%3e%3cuse x='64' y='80' href='%23p'/%3e%3cuse x='72' y='32' href='%23p'/%3e%3cuse x='72' y='80' href='%23p'/%3e%3cuse x='80' y='32' href='%23p'/%3e%3cuse x='80' y='40' href='%23p'/%3e%3cuse x='80' y='48' href='%23p'/%3e%3cuse x='80' y='56' href='%23p'/%3e%3cuse x='80' y='64' href='%23p'/%3e%3cuse x='80' y='72' href='%23p'/%3e%3cuse x='80' y='80' href='%23p'/%3e%3cuse x='32' y='88' href='%23p'/%3e%3cuse x='48' y='88' href='%23p'/%3e%3cuse x='72' y='88' href='%23p'/%3e%3cuse x='96' y='32' href='%23p'/%3e%3cuse x='96' y='48' href='%23p'/%3e%3cuse x='96' y='56' href='%23p'/%3e%3cuse x='96' y='72' href='%23p'/%3e%3cuse x='96' y='80' href='%23p'/%3e%3cuse x='96' y='88' href='%23p'/%3e%3cuse x='104' y='40' href='%23p'/%3e%3cuse x='104' y='48' href='%23p'/%3e%3cuse x='104' y='64' href='%23p'/%3e%3cuse x='104' y='72' href='%23p'/%3e%3cuse x='104' y='88' href='%23p'/%3e%3cuse x='104' y='96' href='%23p'/%3e%3cuse x='112' y='32' href='%23p'/%3e%3cuse x='112' y='40' href='%23p'/%3e%3cuse x='112' y='56' href='%23p'/%3e%3cuse x='112' y='72' href='%23p'/%3e%3cuse x='112' y='88' href='%23p'/%3e%3cuse x='112' y='96' href='%23p'/%3e%3cuse x='120' y='32' href='%23p'/%3e%3cuse x='120' y='48' href='%23p'/%3e%3cuse x='120' y='56' href='%23p'/%3e%3cuse x='120' y='72' href='%23p'/%3e%3cuse x='128' y='32' href='%23p'/%3e%3cuse x='128' y='40' href='%23p'/%3e%3cuse x='128' y='80' href='%23p'/%3e%3cuse x='128' y='96' href='%23p'/%3e%3cuse x='128' y='112' href='%23p'/%3e%3cuse x='128' y='120' href='%23p'/%3e%3cuse x='128' y='128' href='%23p'/%3e%3cuse x='136' y='32' href='%23p'/%3e%3cuse x='136' y='48' href='%23p'/%3e%3cuse x='136' y='56' href='%23p'/%3e%3cuse x='136' y='64' href='%23p'/%3e%3cuse x='136' y='72' href='%23p'/%3e%3cuse x='136' y='80' href='%23p'/%3e%3cuse x='136' y='88' href='%23p'/%3e%3cuse x='136' y='96' href='%23p'/%3e%3cuse x='136' y='104' href='%23p'/%3e%3cuse x='136' y='112' href='%23p'/%3e%3cuse x='136' y='120' href='%23p'/%3e%3cuse x='136' y='128' href='%23p'/%3e%3cuse x='144' y='96' href='%23p'/%3e%3cuse x='144' y='112' href='%23p'/%3e%3cuse x='144' y='120' href='%23p'/%3e%3cuse x='144' y='128' href='%23p'/%3e%3cuse x='152' y='32' href='%23p'/%3e%3cuse x='152' y='40' href='%23p'/%3e%3cuse x='152' y='48' href='%23p'/%3e%3cuse x='152' y='56' href='%23p'/%3e%3cuse x='152' y='80' href='%23p'/%3e%3cuse x='152' y='88' href='%23p'/%3e%3cuse x='152' y='96' href='%23p'/%3e%3cuse x='152' y='104' href='%23p'/%3e%3cuse x='152' y='112' href='%23p'/%3e%3cuse x='160' y='48' href='%23p'/%3e%3cuse x='160' y='72' href='%23p'/%3e%3cuse x='160' y='80' href='%23p'/%3e%3cuse x='160' y='88' href='%23p'/%3e%3cuse x='160' y='96' href='%23p'/%3e%3cuse x='160' y='120' href='%23p'/%3e%3cuse x='168' y='32' href='%23p'/%3e%3cuse x='168' y='48' href='%23p'/%3e%3cuse x='168' y='56' href='%23p'/%3e%3cuse x='168' y='72' href='%23p'/%3e%3cuse x='168' y='80' href='%23p'/%3e%3cuse x='168' y='96' href='%23p'/%3e%3cuse x='168' y='112' href='%23p'/%3e%3cuse x='168' y='120' href='%23p'/%3e%3cuse x='168' y='128' href='%23p'/%3e%3cuse x='32' y='136' href='%23p'/%3e%3cuse x='32' y='144' href='%23p'/%3e%3cuse x='32' y='152' href='%23p'/%3e%3cuse x='32' y='160' href='%23p'/%3e%3cuse x='40' y='128' href='%23p'/%3e%3cuse x='40' y='136' href='%23p'/%3e%3cuse x='40' y='144' href='%23p'/%3e%3cuse x='48' y='136' href='%23p'/%3e%3cuse x='48' y='144' href='%23p'/%3e%3cuse x='48' y='152' href='%23p'/%3e%3cuse x='48' y='168' href='%23p'/%3e%3cuse x='56' y='104' href='%23p'/%3e%3cuse x='56' y='112' href='%23p'/%3e%3cuse x='56' y='136' href='%23p'/%3e%3cuse x='56' y='152' href='%23p'/%3e%3cuse x='56' y='160' href='%23p'/%3e%3cuse x='56' y='168' href='%23p'/%3e%3cuse x='64' y='96' href='%23p'/%3e%3cuse x='64' y='104' href='%23p'/%3e%3cuse x='64' y='112' href='%23p'/%3e%3cuse x='64' y='120' href='%23p'/%3e%3cuse x='64' y='136' href='%23p'/%3e%3cuse x='64' y='152' href='%23p'/%3e%3cuse x='64' y='160' href='%23p'/%3e%3cuse x='64' y='168' href='%23p'/%3e%3cuse x='72' y='104' href='%23p'/%3e%3cuse x='72' y='112' href='%23p'/%3e%3cuse x='72' y='120' href='%23p'/%3e%3cuse x='72' y='128' href='%23p'/%3e%3cuse x='72' y='136' href='%23p'/%3e%3cuse x='72' y='144' href='%23p'/%3e%3cuse x='72' y='160' href='%23p'/%3e%3cuse x='80' y='128' href='%23p'/%3e%3cuse x='80' y='136' href='%23p'/%3e%3cuse x='80' y='152' href='%23p'/%3e%3cuse x='80' y='168' href='%23p'/%3e%3cuse x='88' y='104' href='%23p'/%3e%3cuse x='88' y='128' href='%23p'/%3e%3cuse x='88' y='152' href='%23p'/%3e%3cuse x='96' y='96' href='%23p'/%3e%3cuse x='96' y='112' href='%23p'/%3e%3cuse x='96' y='120' href='%23p'/%3e%3cuse x='96' y='128' href='%23p'/%3e%3cuse x='96' y='136' href='%23p'/%3e%3cuse x='96' y='144' href='%23p'/%3e%3cuse x='96' y='152' href='%23p'/%3e%3cuse x='96' y='160' href='%23p'/%3e%3cuse x='96' y='168' href='%23p'/%3e%3cuse x='104' y='104' href='%23p'/%3e%3cuse x='104' y='120' href='%23p'/%3e%3cuse x='104' y='128' href='%23p'/%3e%3cuse x='104' y='136' href='%23p'/%3e%3cuse x='104' y='160' href='%23p'/%3e%3cuse x='112' y='104' href='%23p'/%3e%3cuse x='112' y='120' href='%23p'/%3e%3cuse x='112' y='128' href='%23p'/%3e%3cuse x='112' y='136' href='%23p'/%3e%3cuse x='112' y='144' href='%23p'/%3e%3cuse x='112' y='152' href='%23p'/%3e%3cuse x='112' y='160' href='%23p'/%3e%3cuse x='112' y='168' href='%23p'/%3e%3cuse x='120' y='104' href='%23p'/%3e%3cuse x='120' y='120' href='%23p'/%3e%3cuse x='120' y='136' href='%23p'/%3e%3cuse x='120' y='144' href='%23p'/%3e%3cuse x='120' y='152' href='%23p'/%3e%3cuse x='120' y='160' href='%23p'/%3e%3cuse x='120' y='168' href='%23p'/%3e%3cuse x='128' y='104' href='%23p'/%3e%3cuse x='128' y='136' href='%23p'/%3e%3cuse x='128' y='152' href='%23p'/%3e%3cuse x='128' y='160' href='%23p'/%3e%3cuse x='128' y='168' href='%23p'/%3e%3cuse x='136' y='136' href='%23p'/%3e%3cuse x='136' y='144' href='%23p'/%3e%3cuse x='136' y='160' href='%23p'/%3e%3cuse x='144' y='136' href='%23p'/%3e%3cuse x='144' y='144' href='%23p'/%3e%3cuse x='144' y='152' href='%23p'/%3e%3cuse x='144' y='160' href='%23p'/%3e%3cuse x='144' y='168' href='%23p'/%3e%3cuse x='152' y='128' href='%23p'/%3e%3cuse x='152' y='136' href='%23p'/%3e%3cuse x='152' y='144' href='%23p'/%3e%3cuse x='152' y='152' href='%23p'/%3e%3cuse x='152' y='160' href='%23p'/%3e%3cuse x='152' y='168' href='%23p'/%3e%3cuse x='160' y='128' href='%23p'/%3e%3cuse x='160' y='152' href='%23p'/%3e%3cuse x='160' y='168' href='%23p'/%3e%3cuse x='168' y='136' href='%23p'/%3e%3cuse x='168' y='144' href='%23p'/%3e%3cuse x='168' y='152' href='%23p'/%3e%3cuse x='168' y='160' href='%23p'/%3e%3cuse x='168' y='168' href='%23p'/%3e%3c/g%3e%3c/svg%3e";
@@ -26,8 +27,15 @@ const QRCodePayment = ({ onSuccess, product, onCancel }) => {
       setIsProcessing(true);
       // Имитируем небольшую задержку перед успешным платежом
       setTimeout(() => {
-        if (onSuccess) {
-          onSuccess(true);
+        try {
+          // Вызываем колбэк успешной оплаты с обработкой ошибок
+          if (onSuccess) {
+            onSuccess(true);
+          }
+        } catch (err) {
+          console.error("Ошибка при обработке успешного платежа:", err);
+          setError("Произошла ошибка при обработке платежа. Пожалуйста, свяжитесь с поддержкой.");
+          setIsProcessing(false);
         }
       }, 1500);
     }
@@ -53,10 +61,18 @@ const QRCodePayment = ({ onSuccess, product, onCancel }) => {
   // Имитация "ручной" проверки платежа
   const handleCheckPayment = () => {
     setIsProcessing(true);
+    setError(null); // Сбрасываем ошибку при новой попытке
+    
     // Имитация проверки платежа с небольшой задержкой
     setTimeout(() => {
-      if (onSuccess) {
-        onSuccess(true);
+      try {
+        if (onSuccess) {
+          onSuccess(true);
+        }
+      } catch (err) {
+        console.error("Ошибка при обработке платежа:", err);
+        setError("Не удалось обработать платеж. Пожалуйста, попробуйте еще раз или обратитесь в поддержку.");
+        setIsProcessing(false);
       }
     }, 1500);
   };
@@ -64,6 +80,8 @@ const QRCodePayment = ({ onSuccess, product, onCancel }) => {
   return (
     <div className="qr-payment-container">
       <h2>Оплата заказа</h2>
+      
+      {error && <div className="payment-error">{error}</div>}
       
       {isProcessing ? (
         <div className="payment-processing">
@@ -127,4 +145,5 @@ const QRCodePayment = ({ onSuccess, product, onCancel }) => {
   );
 };
 
+// Make sure to add this default export
 export default QRCodePayment;
